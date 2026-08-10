@@ -337,6 +337,29 @@ const STYLES = {
   }
 };
 
+// ========== 风格预设中文翻译（避免中英混杂） ==========
+// 与 STYLES 一一对应，为 zhdata.js 中文模板提供纯中文的 光线/色调/风格关键词/配乐描述
+const STYLE_ZH = {
+  cinematic: { lightingDescZh: '戏剧性方向性强光与深沉阴影', colorGradingZh: '青橙色调搭配深邃反差', styleKeywordsZh: '电影感、变形镜头、浅景深、胶片颗粒纹理', musicStyleZh: '电影管弦配乐，渐强高潮' },
+  modern: { lightingDescZh: '柔和漫射光，均匀曝光', colorGradingZh: '明亮中性基调带微妙冷蓝调', styleKeywordsZh: '干净、极简、明亮、当代、利落', musicStyleZh: '现代电子乐，清爽节拍' },
+  warm: { lightingDescZh: '自然窗光带暖色反光', colorGradingZh: '暖金色调，柔和反差', styleKeywordsZh: '温暖、亲密、自然、纪实感', musicStyleZh: '原声吉他配轻柔钢琴' },
+  tech: { lightingDescZh: 'LED 亮点光带青蓝辉光', colorGradingZh: '冷青与深蓝底色配霓虹高光', styleKeywordsZh: '未来感、高科技、数字感、流线型、发光', musicStyleZh: '电子合成器配深沉低频脉冲' },
+  luxury: { lightingDescZh: '低调戏剧光带金色轮廓光', colorGradingZh: '深黑与富金搭配柔和高光', styleKeywordsZh: '奢华、优雅、精致、高端', musicStyleZh: '优雅弦乐配微妙钢琴' },
+  vibrant: { lightingDescZh: '明亮彩色光配霓虹点缀', colorGradingZh: '饱和鲜艳色彩配高反差', styleKeywordsZh: '活力、动感、鲜明、多彩、大胆', musicStyleZh: ' upbeat 电子流行乐，驱动节奏' },
+  documentary: { lightingDescZh: '自然可用光，无人工补光', colorGradingZh: '自然真实色彩配温和反差', styleKeywordsZh: '纪实、手持、真实、原始、自然', musicStyleZh: '极简环境音配轻微打击乐' },
+  artistic: { lightingDescZh: '创意灯光配彩色滤片与戏剧阴影', colorGradingZh: '艺术化调色板配创意色调变化', styleKeywordsZh: '艺术、超现实、创意、绘画感、梦幻', musicStyleZh: '环境电子乐配空灵质感' },
+  comedy: { lightingDescZh: '明亮均匀光配俏皮彩色点缀光', colorGradingZh: '明亮饱和色彩配高调欢快基调', styleKeywordsZh: '喜剧、俏皮、夸张、滑稽、轻松、异想天开', musicStyleZh: '轻快诙谐喜剧音乐，弹跳节奏与卡通音效' },
+  twist: { lightingDescZh: '低调戏剧光配硬阴影与单一主光', colorGradingZh: '低调情绪化调色配深沉阴影与冷色偏移', styleKeywordsZh: '悬疑、神秘、戏剧反讽、电影张力、出人意料', musicStyleZh: '紧张悬疑配乐，缓慢攀升弦乐，静默后骤然刺音揭露' },
+  minimalistAd: { lightingDescZh: '柔和均匀影棚光带单一英雄轮廓光', colorGradingZh: '干净中性基调配微妙反差与亮白', styleKeywordsZh: '极简、干净影棚、高级产品电影感、利落负空间、精准布光', musicStyleZh: '极简环境音配稀疏钢琴与空灵静寂' },
+  cg3d: { lightingDescZh: '三点 CG 布光配柔和环境补光', colorGradingZh: '生动饱和 3D 渲染调色板配干净高光', styleKeywordsZh: '3D CG 动画、风格化角色、生动渲染、流畅动作、皮克斯级打磨', musicStyleZh: '轻快动画配乐，明亮管弦弹跳' },
+  papercraft: { lightingDescZh: '柔和正面光展现纸张纹理与柔和阴影', colorGradingZh: '暖纸色调配柔哑光表面', styleKeywordsZh: '纸艺、手工纸、层叠立体场景、触感剪纸、定格动画', musicStyleZh: '轻柔原声吉他配细微纸拟音' },
+  paperCollage: { lightingDescZh: '平坦均匀光无生硬阴影', colorGradingZh: '层叠拼贴色调配印刷纸品温暖感', styleKeywordsZh: '纸拼贴、半调、触感混合媒材、剪贴层叠、编辑解说', musicStyleZh: '轻盈俏皮打击乐配柔和木管' },
+  mvSubtitle: { lightingDescZh: '演唱会与影棚混光配动态色彩洗换', colorGradingZh: '高反差 MV 调色板配霓虹点缀', styleKeywordsZh: 'MV、节拍同步字体排印、歌词字幕、风格化 MV、节奏剪辑', musicStyleZh: '驱动 MV 曲目，强拍与合成器主奏' },
+  gameIntro: { lightingDescZh: '风格化游戏布光配轮廓辉光与泛光', colorGradingZh: '生动游戏调色板配霓虹与发光', styleKeywordsZh: '游戏开场、双人菜单、风格化游戏 UI、角色驱动、协调 UI 动效', musicStyleZh: '游戏 OST，脉动合成器' },
+  handdrawnLive: { lightingDescZh: '自然实景环境配手绘光线条纹', colorGradingZh: '实景基底配手绘叠加点缀', styleKeywordsZh: '手绘动画叠在实拍上、发光粗糙笔触、超现实变形、触感速写', musicStyleZh: '异想天开原声配俏皮铅笔质感' },
+  brandAnthem: { lightingDescZh: '柔和美人光配温柔镜头光晕', colorGradingZh: '暖电影品牌调色板配金色调高光', styleKeywordsZh: '品牌电影、高级生活方式、向往感、精良镜头语言、情感回报', musicStyleZh: '品牌颂歌，激昂弦乐' }
+};
+
 // ========== 画幅比例 ==========
 const ASPECT_RATIOS = {
   '16:9': { name: '16:9 横屏', desc: '标准宽屏，适合宣传片、广告', h3Value: '16:9' },
@@ -1070,6 +1093,12 @@ function buildContext(formData) {
     narrativeFlavor: stylePreset.narrativeFlavor || '',
     narrativeFlavorZh: stylePreset.narrativeFlavorZh || '',
 
+    // 风格信息（中文版，供 zhdata.js 中文模板使用，避免英文泄漏）
+    styleKeywordsZh: (STYLE_ZH[formData.style] || STYLE_ZH.cinematic).styleKeywordsZh,
+    colorGradingZh: (STYLE_ZH[formData.style] || STYLE_ZH.cinematic).colorGradingZh,
+    lightingDescZh: (STYLE_ZH[formData.style] || STYLE_ZH.cinematic).lightingDescZh,
+    musicStyleZh: (STYLE_ZH[formData.style] || STYLE_ZH.cinematic).musicStyleZh,
+
     // 技术参数
     aspectRatio: formData.aspectRatio || '16:9',
     totalDuration: formData.totalDuration || 40,
@@ -1316,23 +1345,28 @@ function generateStoryboard(formData) {
     templates = SCENE_TEMPLATES[videoType] || SCENE_TEMPLATES.corporate;
   }
 
-  // 按"目标总时长"在镜头间均分秒数（末镜头补余数），让时间码连续
-  const total = formData.totalDuration || (templates.length * 5);
-  const durations = distributeDurations(total, templates.length);
+  // 镜头数量：用户指定的段数（默认 4，范围 2–10）；超出模板长度时按模板顺序环绕复用，保证角色连贯
+  const shotCount = Math.min(10, Math.max(2, parseInt(formData.shotCount, 10) || 5));
+  // 单镜头时长：每段 = 一次 H3 生成（默认 15 秒，可选 5/10 秒），每段独立成片
+  const shotDur = [5, 10, 15].includes(formData.shotDur) ? formData.shotDur : 15;
 
-  return templates.map((scene, index) => {
-    // 为每个场景设置特定的相机运动和光影，并分配对应镜头的台词
+  // 按 shotCount 取镜头模板（环绕），每段统一为 shotDur 秒
+  const scenes = [];
+  for (let i = 0; i < shotCount; i++) {
+    const scene = templates[i % templates.length];
     const sceneCtx = {
       ...ctx,
       cameraMovement: scene.cameraMovement,
       lightingDesc: scene.lighting || ctx.lightingDesc,
-      dialogueLine: ctx.dialogueLines[index] || ''
+      dialogueLine: ctx.dialogueLines[i] || ''
     };
     const data = generateScenePrompt(sceneCtx, scene);
-    data.duration = durations[index]; // 应用均分后的目标时长
+    data.duration = shotDur; // 每段固定时长（H3 单次生成上限 15 秒）
     data.dialogueLine = sceneCtx.dialogueLine; // 透传台词，供 buildShotBlock 使用
-    return data;
-  });
+    data.shotIndex = i; // 记录序号，供参考图 scope 等使用
+    scenes.push(data);
+  }
+  return scenes;
 }
 
 // ========== 时长与时间码工具 ==========
@@ -1354,11 +1388,14 @@ function fmtTimecode(totalSec) {
 }
 
 // ========== 镜头美学控制中文翻译（景别 / 运镜 / 光线） ==========
+// 中文模式一律只显示中文；匹配不到的英文技术词回退为空（绝不回退成英文，避免中英混杂）
 const SHOT_TYPE_ZH = {
   'medium shot': '中景', 'close-up shot': '特写', 'static shot': '固定镜头',
   'medium close-up shot': '中近景', 'Establishing Wide': '大远景/建立镜头',
   'Extreme Close-up': '大特写', 'Medium Shot': '中景', 'Tight Close-up': '紧凑特写',
-  'Wide-to-Hero': '全景转英雄镜头', 'Logo Lockup': 'Logo 定格'
+  'Wide-to-Hero': '全景转英雄镜头', 'Logo Lockup': 'Logo 定格',
+  'aerial establishing shot': '航拍建立镜头', 'extreme close-up shot': '大特写',
+  'medium-wide shot': '中远景', 'wide shot': '全景', 'wide tracking shot': '宽幅跟拍'
 };
 const CAM_ZH = {
   'The camera holds a static shot with a slight handheld shake': '固定机位略带手持晃动',
@@ -1366,7 +1403,22 @@ const CAM_ZH = {
   'The camera holds a static shot throughout': '全程固定机位',
   'slow calm push-in': '缓慢平稳推进', 'slow zoom in': '缓慢推近',
   'restless handheld': '不安定的手持跟拍', 'rapid snap-zoom': '快速急推',
-  'pull-back reveal': '拉远揭示', 'slow settle': '缓慢稳定'
+  'pull-back reveal': '拉远揭示', 'slow settle': '缓慢稳定',
+  'The camera arcs around the crowd at slow speed': '镜头缓慢环绕人群',
+  'The camera holds a static shot with subtle, natural movement': '固定机位伴随细微自然运动',
+  'The camera performs a slow 360-degree arc around the subject': '镜头缓慢 360 度环绕主体',
+  'The camera performs quick cuts between different angles': '快速多角度切换',
+  'The camera pushes in with large amplitude at slow speed': '缓慢大幅推进',
+  'The camera pushes in with large amplitude at slow speed toward a bright light source': '缓慢大幅推向明亮光源',
+  'The camera slowly descends with small amplitude at slow speed while pushing forward': '缓慢小幅下降并向前推进',
+  'The camera slowly rises while pulling back': '缓慢上升同时拉远',
+  'The camera slowly trucks left with small amplitude at slow speed': '缓慢小幅向左横移',
+  'The camera tracks forward at moderate speed through the office': '中等速度向前跟拍穿过办公室',
+  'The camera tracks forward at moderate speed through the space': '中等速度向前跟拍穿过空间',
+  'The camera tracks forward at moderate speed through the venue': '中等速度向前跟拍穿过场馆',
+  'The camera tracks the subject from behind at moderate speed': '中等速度从背后跟拍主体',
+  'The camera tracks the subject from the side at moderate speed': '中等速度从侧面跟拍主体',
+  'The camera trucks right with small amplitude at slow speed': '缓慢小幅向右横移'
 };
 const LIGHT_ZH = {
   'slightly dim, muted lighting to convey frustration': '略暗沉闷',
@@ -1407,83 +1459,141 @@ function fmtDurLocal(d) {
 }
 
 // 图生视频：按 H3 模板规则，在绝对开头输出连续的图片引用前缀
-// 例：@参考图1作为人物视觉参考@参考图2作为产品视觉参考@参考图3作为场景视觉参考
+// 例：@参考图1作为人物视觉参考（描述：主角，穿蓝色西装的中年男性）@参考图2作为产品视觉参考（…）
 function buildImageRefLine(refImages, isZh) {
   if (!refImages || !refImages.length) return '';
   const parts = refImages.map((r, i) => {
     const num = i + 1;
     const t = (r.type || '参考');
-    return isZh
-      ? '@参考图' + num + '作为' + t + '视觉参考'
-      : '@Image' + num + ' as ' + refTypeEn(t) + ' reference';
+    const d = (r.desc || '').trim();
+    if (isZh) {
+      return '@参考图' + num + '作为' + t + '视觉参考' + (d ? ('（描述：' + d + '）') : '');
+    }
+    return '@Image' + num + ' as ' + refTypeEn(t) + ' reference' + (d ? (' (description: ' + d + ')') : '');
   });
   return parts.join('') + (isZh ? '' : ' ');
 }
 
-// 单镜头的结构化自然语言简报核心（时间线 + 镜头运动 + 视觉风格 + 声音设计）
+// 把单镜头时长切成若干时间线小段（非均匀，尾部略长），保证画面持续有内容、不空镜
+function splitDuration(dur) {
+  dur = Math.max(4, Math.floor(dur));
+  let bounds;
+  if (dur <= 6) {
+    bounds = [0, Math.round(dur / 2), dur];
+  } else if (dur <= 10) {
+    bounds = [0, Math.round(dur * 0.34), Math.round(dur * 0.67), dur];
+  } else {
+    // 13–15 秒切成 4 段（如 15 → 0,3,7,11,15），比示例更细
+    bounds = [0, Math.round(dur * 0.2), Math.round(dur * 0.45), Math.round(dur * 0.7), dur];
+  }
+  // 去重并夹紧，确保严格递增
+  const cleaned = [];
+  for (const b of bounds) {
+    const v = Math.max(0, Math.min(dur, b));
+    if (!cleaned.length || v > cleaned[cleaned.length - 1]) cleaned.push(v);
+  }
+  if (cleaned[cleaned.length - 1] !== dur) cleaned.push(dur);
+  return cleaned; // [0, b1, b2, ..., dur]
+}
+
+// 单镜头的结构化自然语言简报核心（细分时间线 + 镜头运动 + 视觉风格 + 声音设计）
 // 用于让每个镜头的提示词填满其时长，符合 H3「时间段无缺口覆盖完整时长、全正向描述」的要求
+// 中文模式：技术词一律取中文翻译，匹配不到则留空（绝不回退英文，避免中英混杂）
 function buildShotBriefCore(scene, lang) {
   const isZh = lang === 'zh';
   const dur = scene.duration || 5;
-  const cam = isZh ? (CAM_ZH[(scene.cameraMovement || '').trim()] || scene.cameraMovement || '')
-                   : (scene.cameraMovement || '');
-  const shot = isZh ? (SHOT_TYPE_ZH[(scene.shotType || '').trim()] || scene.shotType || '')
-                    : (scene.shotType || '');
-  const light = isZh ? (LIGHT_ZH[(scene.lighting || '').trim()] || scene.lighting || '')
-                     : (scene.lighting || '');
+
+  // 中文：景别/运镜取中文翻译（匹配不到留空）；英文：原样术语（H3 英文提示词本就需要英文）
+  const shotZh = isZh ? (SHOT_TYPE_ZH[(scene.shotType || '').trim()] || '') : '';
+  const camZh = isZh ? (CAM_ZH[(scene.cameraMovement || '').trim()] || '') : '';
+  const shotEn = scene.shotType || '';
+  const camEn = scene.cameraMovement || '';
+  const lightEn = scene.lighting || '';
   const color = scene.colorGrading || '';
 
-  // 时间分段（三等分，覆盖完整时长，无缺口）
-  const seg = dur / 3;
-  const t1 = fmtDurLocal(seg);
-  const t2 = fmtDurLocal(seg * 2);
+  // 细分时间线（覆盖完整时长，无缺口）
+  const bounds = splitDuration(dur);
+  const segs = [];
+  for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
 
-  // 从镜头正文抽取首句作为铺设、次句作为推进，让时间线落到真实内容而非空话
+  // 从镜头正文抽取若干分句，落到真实内容而非空话
   let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
-  // 去掉模板自带的 [Shot N] / [镜头N] 前缀，避免泄漏进时间线
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
   const clauses = body.split(/[，。；,.\n]/).map(s => s.trim()).filter(Boolean);
-  // 抽取有意义的铺设句：首句若过短则顺延拼接下一句，避免英文只剩 "cinematic" 之类
-  const limit = isZh ? 12 : 24;
-  let setup = clauses[0] || (isZh ? '主体进入画面' : 'the subject enters frame');
-  let ci = 1;
-  while (setup.length < limit && ci < clauses.length) { setup += (isZh ? '，' : ' ') + clauses[ci]; ci++; }
-  const mid = clauses[ci] || clauses[1] || (isZh ? '动作持续推进，情绪逐步积累' : 'action continues, emotion builds');
 
   const sound = isZh
     ? (scene.soundscapeZh || '贴合画面节奏的自然环境底噪')
     : (scene.soundscapeEn || 'natural ambient sound matching the scene');
 
-  const closing = isZh
-    ? (scene.textOverlay ? ('画面以文字「' + scene.textOverlay + '」收束')
-                          : (shot + '稳定落定，主体外观与参考图保持一致，动作达成明确结果'))
-    : (scene.textOverlay ? ('closes on the on-screen text "' + scene.textOverlay + '"')
-                         : (shot + ' settles, subject stays consistent with the reference, action lands on a clear result'));
+  // 逐段生成 beat：首段建立、中段推进、末段收束
+  const beats = segs.map((seg, i) => {
+    const [s, e] = seg;
+    const range = isZh ? (s + '—' + e + '秒') : (s + '-' + e + 's');
+    if (i === 0) {
+      const setup = clauses[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
+      if (isZh) {
+        return range + '：' + (shotZh ? (shotZh + '，') : '') + '画面呈现「' + setup + '」。';
+      }
+      return range + ': ' + (shotEn || 'The shot') + ' establishes — ' + setup + '. ' + (lightEn || '') + '.';
+    }
+    if (i === segs.length - 1) {
+      if (isZh) {
+        // textOverlay 为布尔 true 时只表示"有字幕"，实际文字已写在正文里，勿显示「true」
+        const hasText = (typeof scene.textOverlay === 'string' && scene.textOverlay.trim());
+        const closing = hasText
+          ? ('画面以文字「' + scene.textOverlay + '」收束')
+          : ((shotZh ? (shotZh + '稳定落定') : '镜头稳定落定') + '，主体外观与参考图保持一致，动作达成明确结果');
+        return range + '：' + closing + '，画面定格于明确结果。';
+      }
+      const hasTextEn = (typeof scene.textOverlay === 'string' && scene.textOverlay.trim());
+      const closingEn = hasTextEn
+        ? ('closes on the on-screen text "' + scene.textOverlay + '"')
+        : ((shotEn || 'The shot') + ' settles, subject stays consistent with the reference, action lands on a clear result');
+      return range + ': ' + closingEn + '; ' + (lightEn || '') + ' settles, subject consistent, frame locks on a clear result.';
+    }
+    // 中间段：取后续分句作为推进，循环兜底
+    const content = clauses[i] || clauses[(i % Math.max(1, clauses.length - 1)) + 1]
+      || (isZh ? '动作持续推进，主体神态与姿态发生可见变化，情绪逐步积累' : 'action continues, the subject’s expression and posture shift visibly as emotion builds');
+    if (isZh) {
+      return range + '：' + content + (camZh ? ('，运镜·' + camZh) : '') + '，主体保持连贯。';
+    }
+    return range + ': ' + content + '; camera ' + (camEn || 'moves naturally') + ', subject stays continuous.';
+  });
 
-  const beats = isZh
-    ? [
-        '0—' + t1 + '秒：' + shot + '建立，画面呈现「' + setup + '」，' + light + '。',
-        t1 + '—' + t2 + '秒：' + mid + '，主体神态与姿态发生可见变化，情绪逐步积累。',
-        t2 + '—' + dur + '秒：' + closing + '，' + light + '收束，主体一致，画面定格于明确结果。'
-      ]
-    : [
-        '0-' + t1 + 's: ' + shot + ' establishes — ' + setup + '. ' + light + '.',
-        t1 + '-' + t2 + 's: ' + mid + '; the subject’s expression and posture shift visibly as emotion builds.',
-        t2 + '-' + dur + 's: ' + closing + '; ' + light + ' settles, subject consistent, frame locks on a clear result.'
-      ];
+  const timeline = (isZh ? '【时间线 · 共 ' + dur + ' 秒，细分 ' + segs.length + ' 段】\n' : '【Timeline · ' + dur + 's, ' + segs.length + ' segments】\n') + beats.join('\n');
 
-  const timeline = (isZh ? '【时间线 · 共 ' + dur + ' 秒】\n' : '【Timeline · ' + dur + 's total】\n') + beats.join('\n');
-  const cameraLine = isZh
-    ? '【镜头运动】景别·' + shot + '；运镜·' + cam + '。'
-    : '【Camera】Shot size: ' + shot + '; Movement: ' + cam + '.';
-  const visualLine = isZh
-    ? '【视觉风格与材质】' + light + (color ? ('，' + color) : '') + '。'
-    : '【Visual style & material】' + light + (color ? (', ' + color) : '') + '.';
+  // 镜头运动行：中文仅在有中文翻译时显示；英文如实保留
+  let cameraLine = '';
+  if (isZh) {
+    if (shotZh || camZh) cameraLine = '【镜头运动】景别·' + (shotZh || '—') + '；运镜·' + (camZh || '自然运镜') + '。';
+  } else {
+    cameraLine = '【Camera】Shot size: ' + (shotEn || '—') + '; Movement: ' + (camEn || 'natural motion') + '.';
+  }
+
+  // 视觉风格行：中文模式省略（避免英文光照/色调词泄漏；画面描述已在正文与时间线中）；英文模式如实保留
+  let visualLine = '';
+  if (!isZh) {
+    visualLine = '【Visual style & material】' + (lightEn || '') + (color ? (', ' + color) : '') + '.';
+  }
+
   const soundLine = isZh
     ? '【声音设计】' + sound + '。'
     : '【Sound design】' + sound + '.';
 
-  return '\n' + timeline + '\n' + cameraLine + '\n' + visualLine + '\n' + soundLine;
+  return '\n' + timeline + (cameraLine ? ('\n' + cameraLine) : '') + (visualLine ? ('\n' + visualLine) : '') + '\n' + soundLine;
+}
+
+// 从下一镜抽取简短"开头画面"，用于衔接指令
+function deriveOpening(scene, lang) {
+  const isZh = lang === 'zh';
+  let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
+  body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+  const clauses = body.split(/[，。；,.\n]/).map(s => s.trim()).filter(Boolean);
+  let opening = clauses[0] || (isZh ? '主体以一个明确的动作/姿态开场' : 'the subject opens with a clear action or pose');
+  // 截断到合适长度，避免衔接指令过长
+  const limit = isZh ? 28 : 60;
+  if (opening.length > limit) opening = opening.slice(0, limit) + (isZh ? '…' : '...');
+  return opening;
 }
 
 // 单个镜头在 detailed_description 中的段落（[Shot N] + 时间码 + 描述 + 美学控制 + 台词 + 结构化简报）
@@ -1532,7 +1642,8 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
 }
 
 // 分镜卡片「直投提示词」专用：H3 标准开头 + 参考图前缀 + 结构化简报（不含 [Shot N] 标记）
-function buildShotBrief(scene, index, startSec, lang, refNote, refImages) {
+// nextScene：下一镜（用于生成"衔接下一镜开头"指令；末镜传 null 表示收尾）
+function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene) {
   const isZh = lang === 'zh';
   const dur = scene.duration || 5;
   const imgRefs = buildImageRefLine(refImages, isZh);
@@ -1541,7 +1652,21 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages) {
     ? ('生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频：\n')
     : ('Generate ' + article + ' ' + dur + '-second, 16:9, 2K, native stereo, MiniMax H3 video:\n');
   const block = buildShotBlock(scene, index, startSec, lang, refNote, { includeMarker: false });
-  return imgRefs + opening + block;
+
+  // 衔接 / 收尾指令
+  let tail = '';
+  if (nextScene) {
+    const nextOpening = deriveOpening(nextScene, lang);
+    tail = isZh
+      ? ('\n【衔接要求】本镜头结尾的画面主体姿态、构图与色调，必须能自然无缝衔接下一镜的开头：「' + nextOpening + '」。两段之间不加黑场，用连续运镜或匹配剪辑衔接，确保成片流畅不跳切。')
+      : ('\n【Continuity】The ending of this shot must seamlessly connect to the opening of the next shot: "' + nextOpening + '". No black frames between; use continuous camera motion or a match cut so the final edit flows without jumps.');
+  } else {
+    tail = isZh
+      ? '\n【收尾】本镜头结尾定格在品牌/产品特写或 Logo，画面稳定、信息清晰，自然收束全片。'
+      : '\n【Closing】End on a stable close-up of the brand/product or logo, clean and readable, naturally closing the film.';
+  }
+
+  return imgRefs + opening + block + tail;
 }
 
 // 参考图类型 → 英文（用于英文提示词）

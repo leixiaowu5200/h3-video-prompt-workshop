@@ -381,6 +381,34 @@ body::before {
   color: var(--accent-bright);
 }
 
+/* 单镜头时长选择 */
+.duration-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.duration-card {
+  padding: 8px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.duration-card:hover {
+  border-color: var(--border-hover);
+}
+
+.duration-card.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent-bright);
+}
+
 /* 生成按钮 */
 .btn-generate {
   width: 100%;

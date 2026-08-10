@@ -112,10 +112,20 @@
         <div class="ratio-grid" id="ratioGrid"></div>
       </div>
 
-      <!-- 目标总时长 -->
+      <!-- 镜头数量 -->
       <div class="form-group">
-        <label>目标总时长（秒）<span class="hint">整片时长，将均分到各镜头并生成时间码</span></label>
-        <input type="number" id="totalDuration" min="4" max="600" step="1" value="40" placeholder="例如：15 / 40">
+        <label>镜头数量 <span class="hint">一次生成几段镜头，每段独立成片、后期按顺序拼接</span></label>
+        <input type="number" id="shotCount" min="2" max="10" step="1" value="5" placeholder="例如：5">
+      </div>
+
+      <!-- 单镜头时长 -->
+      <div class="form-group">
+        <label>单镜头时长 <span class="hint">每段时长，对应一次 H3 生成（4–15 秒）</span></label>
+        <div class="duration-grid" id="durationGrid">
+          <div class="duration-card" data-dur="5">5 秒</div>
+          <div class="duration-card" data-dur="10">10 秒</div>
+          <div class="duration-card active" data-dur="15">15 秒（推荐）</div>
+        </div>
       </div>
 
       <!-- 台词 / 配音脚本 -->
@@ -195,8 +205,8 @@
           </div>
           <div class="feature">
             <div class="f-icon">📋</div>
-            <div class="f-title">H3规范提示词</div>
-            <div class="f-desc">Full-Reference 六段式全参考格式，可直接使用</div>
+            <div class="f-title">分镜直投提示词</div>
+            <div class="f-desc">每段独立成片，内部细分时间线，相邻镜头自动衔接，直接粘贴海螺 H3</div>
           </div>
         </div>
       </div>
@@ -219,34 +229,9 @@
           </div>
         </div>
 
-        <!-- Full-Reference 整片六段式提示词 -->
-        <div class="fullref-section" id="fullRefSection">
-          <div class="fullref-head">
-            <div class="fullref-title">🎯 Full-Reference 全参考模式 · 整片六段式提示词</div>
-            <span class="fullref-lang-note">中英文双栏 · 可分别一键复制</span>
-          </div>
-          <div class="fullref-meta" id="fullRefMeta"></div>
-          <div class="fullref-lang-grid">
-            <div class="fullref-lang-box">
-              <div class="fullref-lang-head">
-                <span class="fullref-lang-name">中文</span>
-                <button class="btn-export" id="copyFullRefZhBtn">📋 复制中文</button>
-              </div>
-              <pre class="fullref-content" id="fullRefZhContent"></pre>
-            </div>
-            <div class="fullref-lang-box">
-              <div class="fullref-lang-head">
-                <span class="fullref-lang-name">English</span>
-                <button class="btn-export" id="copyFullRefEnBtn">📋 复制英文</button>
-              </div>
-              <pre class="fullref-content" id="fullRefEnContent"></pre>
-            </div>
-          </div>
-        </div>
-
-        <!-- 分镜头部（标题 + 语言切换，紧贴完整提示词下沿） -->
+        <!-- 分镜头部（标题 + 语言切换，紧贴分镜卡片上方） -->
         <div class="storyboard-header storyboard-header--shots">
-          <h2>分镜脚本 <span class="count" id="sceneCount">0 个场景</span></h2>
+          <h2>分镜提示词 <span class="count" id="sceneCount">0 个镜头</span></h2>
           <div class="lang-toggle" id="langToggle" title="切换分镜提示词语言（仅影响下方各镜头卡片）">
             <button data-lang="zh">中文</button>
             <button data-lang="en">English</button>
@@ -280,14 +265,14 @@
         <div class="h3-info-icon">⏱️</div>
         <div class="h3-info-title">时长与帧率</div>
         <div class="h3-info-text">
-          <div class="h3-info-short">单次生成 4–15 秒 · 支持目标总时长与时间码<br>24 FPS，32kHz 立体声原生音频</div>
+          <div class="h3-info-short">单次生成 4–15 秒 · 每段独立成片 · 相邻镜头自动衔接<br>24 FPS，32kHz 立体声原生音频</div>
           <div class="h3-info-detail">
-            <p><strong>时长：</strong>单次调用生成 4–15 秒连续视频。设置「目标总时长」后，工具按镜头数均分秒数（末镜头补余数）。</p>
+            <p><strong>单镜头时长：</strong>在左侧选 10 秒或 15 秒（H3 单次生成上限 15 秒）。一次生成多个镜头段，每段是一段独立的 H3 视频。</p>
+            <p><strong>镜头数量：</strong>例如选 4 个镜头 × 15 秒 = 一条约 60 秒的成片。每个镜头内部工具会自动细分为若干时间线小段（如 0–3s、3–7s、7–11s、11–15s），让画面持续有内容、不空。</p>
             <p><strong>帧率：</strong>24 FPS 电影级标准，画面运动流畅自然</p>
             <p><strong>音频：</strong>32kHz 立体声原生生成，画面中的环境音、对白、音乐一并输出，无需后期配音</p>
-            <p><strong>时间码：</strong>生成后每个镜头都标注起始时间码（如 [Shot 2] At 00:04.000,），后期按此拼接即为一条连续成片。</p>
-            <p><strong>拼接技巧：</strong>每个 [Shot N] 是独立成片，后期用剪辑软件（如剪映/PR）按时间码顺序拼接即可，场景间加 0.2–0.5 秒转场更自然</p>
-            <p><strong>⚠️ H3 下限：</strong>单段最少 4 秒。若目标总时长 / 镜头数 &lt; 4，建议提高总时长或减少镜头，或在剪辑中裁剪。</p>
+            <p><strong>衔接：</strong>每段提示词都会写明"结尾须自然衔接下一镜开头"，后期按顺序拼接即为一条连贯成片，场景间加 0.2–0.5 秒转场更自然。</p>
+            <p><strong>⚠️ H3 下限：</strong>单段最少 4 秒；本工具默认 10/15 秒均已满足。</p>
           </div>
           <div class="h3-info-toggle">点击展开 ▾</div>
         </div>
@@ -295,17 +280,16 @@
 
       <div class="h3-info-card" data-card="format" tabindex="0" role="button" aria-expanded="false">
         <div class="h3-info-icon">📝</div>
-        <div class="h3-info-title">六段式全参考格式</div>
+        <div class="h3-info-title">分镜直投提示词结构</div>
         <div class="h3-info-text">
-          <div class="h3-info-short">subject_definitions<br>summary · retention_analysis<br>detailed_description<br>overall_soundscape · non_diegetic_music</div>
+          <div class="h3-info-short">每条 = 一段 H3 视频<br>开头 · 参考图 · 时间线细分 · 衔接</div>
           <div class="h3-info-detail">
-            <p><strong>1. subject_definitions：</strong>定义本片复用的主体/产品/场景/风格（&lt;Subject 1&gt;、&lt;Subject 2&gt;…），说明来源与必须保持的特征。</p>
-            <p><strong>2. summary：</strong>首句以方括号任务类型开头（如 [reference generation]），概括整片、主体与镜头流程。</p>
-            <p><strong>3. retention_analysis：</strong>逐行说明每个参考标签在全片如何保留 / 迁移 / 复制（fully_preserved 等）。</p>
-            <p><strong>4. detailed_description：</strong>先定全片风格，再按 [Shot 1]、[Shot 2] At 00:04.000, … 顺序写各镜头构图、运镜、光影、动作与声音。</p>
-            <p><strong>5. overall_soundscape：</strong>全片环境声与物理动作声（不含已写在分镜里的对白）。</p>
-            <p><strong>6. non_diegetic_music：</strong>只有观众听到的配乐；无配乐写 N/A。</p>
-            <p><strong>⚠️ 硬性要求：</strong>六段顺序固定、缺一不可；不要把全参考格式降级成基础的 integrated_multimodal_description 三段格式。</p>
+            <p><strong>1. H3 开头：</strong>「生成一段 N 秒、16:9、2K、原生立体声、MiniMax H3 的视频」——声明规格。</p>
+            <p><strong>2. 参考图前缀（图生视频）：</strong>「@参考图1作为人物视觉参考（描述：…）」放在绝对开头，符合 H3 图片引用规则。</p>
+            <p><strong>3. 镜头描述：</strong>主体、构图、运镜、光影、动作与台词。</p>
+            <p><strong>4. 时间线细分：</strong>把单镜头时长切成几段（如 0–3s、3–7s、7–11s、11–15s），每段都有明确画面，保证时长被填满、不空镜。</p>
+            <p><strong>5. 衔接要求：</strong>每段末尾写明"本镜结尾须自然衔接下一镜开头"，末镜则定格收尾，确保成片连贯。</p>
+            <p><strong>6. 声音设计：</strong>该镜专属环境声 / 配乐提示。</p>
           </div>
           <div class="h3-info-toggle">点击展开 ▾</div>
         </div>
@@ -315,15 +299,15 @@
         <div class="h3-info-icon">🎬</div>
         <div class="h3-info-title">使用方式</div>
         <div class="h3-info-text">
-          <div class="h3-info-short">整片输出一条 Full-Reference 六段式提示词<br>逐镜头生成后按时间码拼接成片</div>
+          <div class="h3-info-short">选好配置 → 生成 → 复制分镜提示词<br>逐段粘贴 H3 生成 → 拼接出片</div>
           <div class="h3-info-detail">
             <p><strong>标准流程：</strong></p>
-            <p>① 配置左侧项目信息（主题/行业/类型/风格/画幅/目标总时长）</p>
-            <p>② 点击"🎬 生成"获得整片六段式提示词（含各镜头时间码）</p>
-            <p>③ 可选：点击"✨ 优化提示词"用通义千问润色英文</p>
-            <p>④ 复制整片六段式提示词，粘贴到 H3 逐 [Shot N] 生成</p>
-            <p>⑤ 用剪映/PR 按时间码拼接、加转场、调色、出片</p>
-            <p><strong>高级用法：</strong>把同主题的不同分镜（节日版/产品版/招聘版）批量生成，沉淀为团队的"提示词模板库"</p>
+            <p>① 左侧配置（类型/行业/品牌/风格/画幅/镜头数量/单镜头时长，可选图生视频参考图）</p>
+            <p>② 点击"🎬 生成"得到若干条「分镜直投提示词」，每条对应一段 H3 视频</p>
+            <p>③ 可选：点"✨ 优化提示词"用通义千问润色英文</p>
+            <p>④ 逐条复制，分别粘贴到海螺 H3 生成（每段 10–15 秒）</p>
+            <p>⑤ 用剪映/PR 按镜头顺序拼接、加转场、调色、出片</p>
+            <p><strong>小贴士：</strong>同一主题多版本（节日版/产品版）可反复生成，沉淀为团队的"提示词模板库"</p>
           </div>
           <div class="h3-info-toggle">点击展开 ▾</div>
         </div>

@@ -8,6 +8,7 @@ const state = {
   selectedIndustry: '',
   selectedStyle: 'cinematic',
   selectedRatio: '16:9',
+  shotDur: 15, // 单镜头时长（5 / 10 / 15 秒）
   genMode: 't2v', // 't2v' 文生视频 | 'i2v' 图生视频
   referenceImages: [], // [{ type, desc, scope:'all'|number }]
   scenes: [],
@@ -23,6 +24,7 @@ function init() {
   renderIndustries();
   renderStyles();
   renderRatios();
+  renderDurations();
   // 同步语言切换高亮
   document.querySelectorAll('#langToggle button').forEach(b => {
     b.classList.toggle('active', b.dataset.lang === state.lang);
@@ -169,6 +171,24 @@ function renderRatios() {
   });
 }
 
+// 单镜头时长选择（10 秒 / 15 秒）
+function renderDurations() {
+  const grid = document.getElementById('durationGrid');
+  if (!grid) return;
+  grid.innerHTML = Array.from(grid.querySelectorAll('.duration-card')).map(card => {
+    const dur = parseInt(card.dataset.dur, 10);
+    return `<div class="duration-card ${dur === state.shotDur ? 'active' : ''}" data-dur="${dur}">${card.textContent.trim()}</div>`;
+  }).join('');
+
+  grid.querySelectorAll('.duration-card').forEach(card => {
+    card.addEventListener('click', () => {
+      grid.querySelectorAll('.duration-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      state.shotDur = parseInt(card.dataset.dur, 10);
+    });
+  });
+}
+
 // ========== 绑定事件 ==========
 function bindEvents() {
   // 高级选项切换
@@ -184,14 +204,6 @@ function bindEvents() {
 
   // 导出按钮
   document.getElementById('copyAllBtn').addEventListener('click', handleCopyAll);
-  document.getElementById('copyFullRefZhBtn').addEventListener('click', () => {
-    if (!state.fullRefZh) return;
-    copyToClipboard(state.fullRefZh, document.getElementById('copyFullRefZhBtn'));
-  });
-  document.getElementById('copyFullRefEnBtn').addEventListener('click', () => {
-    if (!state.fullRefEn) return;
-    copyToClipboard(state.fullRefEn, document.getElementById('copyFullRefEnBtn'));
-  });
   document.getElementById('exportWordBtn').addEventListener('click', handleExportWord);
   document.getElementById('printBtn').addEventListener('click', () => window.print());
 
@@ -410,7 +422,8 @@ function collectFormData() {
     genMode: state.genMode || 't2v',
     referenceImages: state.referenceImages || [],
     dialogue: (document.getElementById('dialogue') ? document.getElementById('dialogue').value : '') || '',
-    totalDuration: parseInt((document.getElementById('totalDuration') && document.getElementById('totalDuration').value), 10) || 40
+    shotCount: parseInt((document.getElementById('shotCount') && document.getElementById('shotCount').value), 10) || 5,
+    shotDur: state.shotDur || 15
   };
 }
 
@@ -477,30 +490,11 @@ function renderStoryboard() {
   let acc = 0;
   for (let i = 0; i < n; i++) { starts.push(acc); acc += scenes[i].duration; }
 
-  // 构建整片六段式提示词（Full-Reference）—— 中英文双份
-  const fullRefZh = buildFullReference(scenes, state.formData, 'zh');
-  const fullRefEn = buildFullReference(scenes, state.formData, 'en');
-  state.fullRefZh = fullRefZh;
-  state.fullRefEn = fullRefEn;
-  const zhEl = document.getElementById('fullRefZhContent');
-  const enEl = document.getElementById('fullRefEnContent');
-  if (zhEl) zhEl.textContent = fullRefZh;
-  if (enEl) enEl.textContent = fullRefEn;
-  const metaEl = document.getElementById('fullRefMeta');
-  if (metaEl) {
-    const minShot = Math.min.apply(null, scenes.map(s => s.duration));
-    let warn = '';
-    if (minShot < 4) {
-      warn = ' · ⚠ H3 单段最少 4 秒，当前有镜头仅 ' + minShot + ' 秒，建议总时长≥' + (n * 4) + ' 秒，或在剪辑中裁剪/减少镜头数';
-    }
-    const modeLabel = (state.formData.genMode === 'i2v')
-      ? ('图生视频 · ' + (state.formData.referenceImages ? state.formData.referenceImages.length : 0) + ' 张参考图')
-      : '文生视频';
-    metaEl.textContent = n + ' 个镜头 · 总时长 ' + total + ' 秒 · 画幅 ' + (state.formData.aspectRatio || '16:9') + ' · ' + modeLabel + warn;
-  }
-
-  // 场景数量
-  document.getElementById('sceneCount').textContent = n + ' 个场景 · ' + total + '秒';
+  // 分镜数量 / 总时长标题
+  const modeLabel = (state.formData.genMode === 'i2v')
+    ? (' · 图生视频 ' + (state.formData.referenceImages ? state.formData.referenceImages.length : 0) + ' 张参考图')
+    : ' · 文生视频';
+  document.getElementById('sceneCount').textContent = n + ' 个镜头 · 每段 ' + (scenes[0] ? scenes[0].duration : 15) + ' 秒 · 共 ' + total + ' 秒' + modeLabel;
 
   // 场景列表
   const list = document.getElementById('sceneList');
@@ -545,7 +539,8 @@ function createSceneCard(scene, index, startSec) {
   const refImages = (state.formData && state.formData.genMode === 'i2v' && Array.isArray(state.formData.referenceImages))
     ? state.formData.referenceImages : [];
   const refNote = refImages.length ? buildRefNoteForShot(refImages, index, isZh) : '';
-  const shotBlock = buildShotBrief(scene, index, startSec, lang, refNote, refImages);
+  const nextScene = (index < state.scenes.length - 1) ? state.scenes[index + 1] : null;
+  const shotBlock = buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene);
 
   card.innerHTML = `
     <div class="scene-header">
@@ -598,8 +593,16 @@ function createSceneCard(scene, index, startSec) {
 // ========== 复制全部提示词 ==========
 function handleCopyAll() {
   if (!state.scenes.length) return;
-  const combined = (state.fullRefZh || '') + '\n\n========== English ==========\n\n' + (state.fullRefEn || '');
-  copyToClipboard(combined);
+  const lang = state.lang;
+  const isZh = lang === 'zh';
+  const refImages = (state.formData && state.formData.genMode === 'i2v' && Array.isArray(state.formData.referenceImages))
+    ? state.formData.referenceImages : [];
+  const parts = state.scenes.map((scene, index) => {
+    const refNote = refImages.length ? buildRefNoteForShot(refImages, index, isZh) : '';
+    const nextScene = (index < state.scenes.length - 1) ? state.scenes[index + 1] : null;
+    return buildShotBrief(scene, index, 0, lang, refNote, refImages, nextScene);
+  });
+  copyToClipboard(parts.join('\n\n==========\n\n'));
 }
 
 // ========== 导出 Word ==========
@@ -744,17 +747,27 @@ async function callQwen(system, user) {
   throw new Error('返回格式无法解析');
 }
 
-// 从通义千问回复中解析 H3 三字段提示词
+// 从通义千问回复中解析 H3 三字段提示词（宽松版：容忍多余文字、Markdown、大小写变化）
 function parseH3Reply(text) {
   if (!text) return null;
-  const get = (key) => {
-    const re = new RegExp(key + '\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*(?:integrated_multimodal_description|overall_soundscape|non_diegetic_music)\\s*:|$)', 'i');
-    const m = text.match(re);
+  // 先剥离可能的 Markdown 代码块包裹
+  let cleaned = text.replace(/```[\s\S]*?```/g, function(m) { return m.replace(/```\w*\n?/g, '').replace(/```/g, ''); }).trim();
+  if (!cleaned && text.trim()) cleaned = text.trim();
+  const get = function(key) {
+    // 宽松匹配：允许冒号中英文、前后空格、大小写差异
+    var re = new RegExp(key + '\\s*[:：]\\s*([\\s\\S]*?)(?=\\n\\s*(?:integrated_multimodal_description|overall_soundscape|non_diegetic_music)\\s*[:：]|$)', 'i');
+    var m = cleaned.match(re);
+    // 再尝试无空格紧贴格式
+    if (!m) {
+      re = new RegExp(key + '\\s*[:：]\\s*([\\s\\S]*)', 'i');
+      m = cleaned.match(re);
+    }
     return m ? m[1].trim() : '';
   };
-  const visual = get('integrated_multimodal_description');
-  const soundscape = get('overall_soundscape');
-  const music = get('non_diegetic_music');
+  var visual = get('integrated_multimodal_description') || get('integrated multimodal description') || get('visual') || get('integrated_multimodal');
+  var soundscape = get('overall_soundscape') || get('overall soundscape') || get('soundscape') || get('overall_soundscape');
+  var music = get('non_diegetic_music') || get('non diegetic music') || get('music') || get('non_diegetic_music');
+  // 至少有 visual 就算有效（部分返回也接受）
   if (!visual && !soundscape && !music) return null;
   return { visual: visual || '', soundscape: soundscape || '', music: music || '' };
 }
@@ -829,24 +842,36 @@ async function handleQwenOptimize(direction) {
     for (let i = 0; i < state.scenes.length; i++) {
       const scene = state.scenes[i];
       btn.innerHTML = '✨ 优化中 ' + (i + 1) + '/' + state.scenes.length + '...';
-      const user = '请把以下中文 H3 提示词翻译并润色为英文，保持三字段格式：\n\n' + scene.promptZh + directionSuffix;
-      const reply = await callQwen(system, user);
-      const parsed = parseH3Reply(reply);
-      if (parsed) {
-        scene.visualEn = parsed.visual;
-        scene.soundscapeEn = parsed.soundscape;
-        scene.musicEn = parsed.music;
-        scene.promptEn = `integrated_multimodal_description: ${parsed.visual}\n\noverall_soundscape: ${parsed.soundscape}\n\nnon_diegetic_music: ${parsed.music}`;
-        okCount++;
+      try {
+        var user = '请把以下中文 H3 提示词翻译并润色为英文，保持三字段格式：\n\n' + scene.promptZh + directionSuffix;
+        var reply = await callQwen(system, user);
+        console.log('[H3] Qwen 场景 ' + (i+1) + ' 原始回复:', reply);
+        var parsed = parseH3Reply(reply);
+        if (parsed && (parsed.visual || parsed.soundscape || parsed.music)) {
+          scene.visualEn = parsed.visual;
+          scene.soundscapeEn = parsed.soundscape;
+          scene.musicEn = parsed.music;
+          scene.promptEn = 'integrated_multimodal_description: ' + parsed.visual + '\n\noverall_soundscape: ' + parsed.soundscape + '\n\nnon_diegetic_music: ' + parsed.music;
+          okCount++;
+          console.log('[H3] Qwen 场景 ' + (i+1) + ' 解析成功');
+        } else {
+          console.warn('[H3] Qwen 场景 ' + (i+1) + ' 解析失败，回复内容:', reply);
+        }
+      } catch (sceneErr) {
+        // 单镜头失败不中断整体，继续下一个
+        console.error('[H3] Qwen 场景 ' + (i+1) + ' 调用异常:', sceneErr);
       }
     }
     renderStoryboard();
-    if (okCount === state.scenes.length) {
-      // 软计数：每次成功优化整体 +1（注意：纯前端计数，清 localStorage 即可重置，仅作提示用）
+    if (okCount > 0) {
       bumpOptimizeCount();
-      showToast('✨ 通义千问已优化全部 ' + state.scenes.length + ' 个场景');
+      if (okCount === state.scenes.length) {
+        showToast('✨ 通义千问已优化全部 ' + state.scenes.length + ' 个场景');
+      } else {
+        showToast('✨ 已优化 ' + okCount + '/' + state.scenes.length + ' 个场景（部分镜头 API 无响应或返回格式异常）', 'warn');
+      }
     } else {
-      showToast('✨ 已优化 ' + okCount + '/' + state.scenes.length + ' 个场景', 'warn');
+      showToast('✨ 所有场景均未优化成功，请检查网络或稍后重试', 'warn');
     }
   } catch (e) {
     showToast('通义千问调用失败：' + (e.message || e), 'warn');

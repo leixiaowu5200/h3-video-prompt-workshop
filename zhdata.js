@@ -36,7 +36,7 @@ const ZH_SCENES = {
     strength: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `今天，${ctx.brand}立足于${ctx.industryName}前沿，由世界级团队与技术驱动。`;
-        return `[镜头1] 宽幅跟拍镜头穿过${ctx.brand}所在的专业作业场景。镜头以中等速度向前推移，依次展现一排排有序而精准的活动。身着职业装的工作人员专注地操作先进设备。${ctx.lightingDesc}。镜头捕捉到这一作业的规模与专业度。画外音（S1）以自信、权威的语气说道：<d>[中文] ${voZh}</d>，画面中工作人员嘴唇保持闭合。`;
+        return `[镜头1] 宽幅跟拍镜头穿过${ctx.brand}所在的专业作业场景。镜头以中等速度向前推移，依次展现一排排有序而精准的活动。身着职业装的工作人员专注地操作先进设备。${ctx.lightingDescZh}。镜头捕捉到这一作业的规模与专业度。画外音（S1）以自信、权威的语气说道：<d>[中文] ${voZh}</d>，画面中工作人员嘴唇保持闭合。`;
       },
       soundscape(ctx) {
         return `机器设备有节奏的嗡鸣，叠加键盘轻响、抛光地面上的脚步声，以及繁忙专业环境的 ambient  buzz。`;
@@ -47,7 +47,7 @@ const ZH_SCENES = {
     },
     product: {
       visual(ctx) {
-        return `[镜头1] 中近景镜头，将${ctx.product || ctx.brand}呈现在极简展台上。镜头以缓慢速度做 360 度环绕。影棚戏剧光打出的轮廓光勾出产品边缘，形成高级英雄镜头。${ctx.colorGrading}。右上角以现代无衬线字体淡入清爽的品牌名"${ctx.brand}"。产品下方的表面反射出微妙的光纹。`;
+        return `[镜头1] 中近景镜头，将${ctx.product || ctx.brand}呈现在极简展台上。镜头以缓慢速度做 360 度环绕。影棚戏剧光打出的轮廓光勾出产品边缘，形成高级英雄镜头。${ctx.colorGradingZh}。右上角以现代无衬线字体淡入清爽的品牌名"${ctx.brand}"。产品下方的表面反射出微妙的光纹。`;
       },
       soundscape(ctx) {
         return `安静的影棚氛围，伴着影棚灯具的微弱电流声，以及一缕几乎听不见、与画面精度相呼应的电子音。`;
@@ -71,7 +71,7 @@ const ZH_SCENES = {
     responsibility: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `除了商业，我们更相信回馈——回馈社区，也回馈我们共享的地球。`;
-        return `[镜头1] 宽景镜头展现社区公益场景——身着品牌 T 恤的志愿者种树、孩童欢笑、背景里太阳能板熠熠生辉。镜头缓慢上升并向后拉开，展现公益项目的全貌。${ctx.lightingDesc}。画面洋溢温暖与真挚关怀。画外音（S1）以真诚、温柔的语气说道：<d>[中文] ${voZh}</d>，画面中参与者嘴唇保持闭合。`;
+        return `[镜头1] 宽景镜头展现社区公益场景——身着品牌 T 恤的志愿者种树、孩童欢笑、背景里太阳能板熠熠生辉。镜头缓慢上升并向后拉开，展现公益项目的全貌。${ctx.lightingDescZh}。画面洋溢温暖与真挚关怀。画外音（S1）以真诚、温柔的语气说道：<d>[中文] ${voZh}</d>，画面中参与者嘴唇保持闭合。`;
       },
       soundscape(ctx) {
         return `背景里的鸟鸣、树叶沙沙、孩童笑声，以及挖掘与种植的微声，全部笼罩在温柔的户外氛围中。`;
@@ -95,7 +95,7 @@ const ZH_SCENES = {
     closing: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || ctx.slogan || `${ctx.brand}。今天，共建明日。`;
-        return `[镜头1] 固定镜头，定格在干净的暗色渐变背景上。"${ctx.brand}"标志以粒子聚合的方式带微光浮现，落定在画面中央。标志下方，文字"${ctx.slogan || '今天，共建明日。'}"以优雅清爽的无衬线字体淡入。${ctx.colorGrading}。画外音（S1）以自信、收束的语气说道：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
+        return `[镜头1] 固定镜头，定格在干净的暗色渐变背景上。"${ctx.brand}"标志以粒子聚合的方式带微光浮现，落定在画面中央。标志下方，文字"${ctx.slogan || '今天，共建明日。'}"以优雅清爽的无衬线字体淡入。${ctx.colorGradingZh}。画外音（S1）以自信、收束的语气说道：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
       },
       soundscape(ctx) {
         return `干净安静的影棚氛围，标志浮现时一声细微电子轻响，随后轻柔淡出至近乎无声。`;
@@ -146,7 +146,7 @@ const ZH_SCENES = {
     lifestyle: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `看 ${ctx.product || ctx.brand} 如何无缝融入你的生活。`;
-        return `[镜头1] 中宽景镜头，展现一个人于美好的真实场景中使用${ctx.product || ctx.brand}。镜头以中等速度从侧方跟拍，此人轻松愉悦地度过一天。${ctx.lightingDesc}。此人微笑，显然享受其中。产品自然地融入场景，升华此刻而非喧宾夺主。画外音（S1）以温暖、有共鸣的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+        return `[镜头1] 中宽景镜头，展现一个人于美好的真实场景中使用${ctx.product || ctx.brand}。镜头以中等速度从侧方跟拍，此人轻松愉悦地度过一天。${ctx.lightingDescZh}。此人微笑，显然享受其中。产品自然地融入场景，升华此刻而非喧宾夺主。画外音（S1）以温暖、有共鸣的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
       },
       soundscape(ctx) {
         return `自然环境声——轻柔脚步、室内外环境音、产品细微运转声，以及使用者满足的低声。`;
@@ -158,7 +158,7 @@ const ZH_SCENES = {
     cta: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `${ctx.brand}。现已上市。感受不同。`;
-        return `[镜头1] 固定镜头，${ctx.product || ctx.brand}醒目地呈现在干净渐变背景前。画面顶部出现"${ctx.brand}"标志。产品下方粗体文字叠层："${ctx.ctaText || '立即购买'}"与"${ctx.slogan || '感受不同'}"以清爽现代无衬线字体呈现。一道微光掠过文字。${ctx.colorGrading}。`;
+        return `[镜头1] 固定镜头，${ctx.product || ctx.brand}醒目地呈现在干净渐变背景前。画面顶部出现"${ctx.brand}"标志。产品下方粗体文字叠层："${ctx.ctaText || '立即购买'}"与"${ctx.slogan || '感受不同'}"以清爽现代无衬线字体呈现。一道微光掠过文字。${ctx.colorGradingZh}。`;
       },
       soundscape(ctx) {
         return `干净明亮的影棚氛围，文字出现时一声满意轻响，随后微电子铺底。`;
@@ -198,7 +198,7 @@ const ZH_SCENES = {
     values: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `我们相信：品质，绝不妥协。人，高于利润。做经得起时间的东西。`;
-        return `[镜头1] 宽景镜头展现充满人气与社区的生动场景——喧闹市集、朋友共享一刻、或人群穿过美好公共空间。镜头缓慢上升并向后拉开，视野扩大，展现人际连接的全貌。${ctx.lightingDesc}。画面下方三分之一处淡入一行简洁的品牌名"${ctx.brand}"。画外音（S1）以热情、价值驱动的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 宽景镜头展现充满人气与社区的生动场景——喧闹市集、朋友共享一刻、或人群穿过美好公共空间。镜头缓慢上升并向后拉开，视野扩大，展现人际连接的全貌。${ctx.lightingDescZh}。画面下方三分之一处淡入一行简洁的品牌名"${ctx.brand}"。画外音（S1）以热情、价值驱动的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `丰富的人声环境——交叠的谈话、脚步、笑声，以及鲜活社区的轻柔声响，自然层叠。`;
@@ -222,7 +222,7 @@ const ZH_SCENES = {
     brandFrame: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || ctx.slogan || `${ctx.brand}。活出更多。`;
-        return `[镜头1] 固定镜头，定格在干净优雅的柔渐变背景上。"${ctx.brand}"标志以精致动画出现在画面中央——一道柔光扫过。标志下方，文字"${ctx.slogan || '活出更多。'}"以优雅衬线字体淡入。构图极简，留白充足。${ctx.colorGrading}。画外音（S1）以温暖、收束的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 固定镜头，定格在干净优雅的柔渐变背景上。"${ctx.brand}"标志以精致动画出现在画面中央——一道柔光扫过。标志下方，文字"${ctx.slogan || '活出更多。'}"以优雅衬线字体淡入。构图极简，留白充足。${ctx.colorGradingZh}。画外音（S1）以温暖、收束的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `安静干净的氛围，标志出现时一声共鸣轻响，随后轻柔淡出至近乎无声。`;
@@ -237,7 +237,7 @@ const ZH_SCENES = {
   ecommerce: {
     closeup: {
       visual(ctx) {
-        return `[镜头1] 极特写镜头，捕捉${ctx.product || ctx.brand}被拆箱或揭晓的瞬间。镜头以大振幅缓慢推进扫过产品表面，展现高级质感、鲜亮色彩与精细细节。明亮影棚光搭配彩色点缀光，营造吸睛、适合社媒的观感。画面中央以动态动画弹出醒目的品牌名"${ctx.product || ctx.brand}"。${ctx.colorGrading}。`;
+        return `[镜头1] 极特写镜头，捕捉${ctx.product || ctx.brand}被拆箱或揭晓的瞬间。镜头以大振幅缓慢推进扫过产品表面，展现高级质感、鲜亮色彩与精细细节。明亮影棚光搭配彩色点缀光，营造吸睛、适合社媒的观感。画面中央以动态动画弹出醒目的品牌名"${ctx.product || ctx.brand}"。${ctx.colorGradingZh}。`;
       },
       soundscape(ctx) {
         return `拆箱满足感——纸张窸窣、盒子打开、指甲轻敲产品表面，以及文字出现时的细微电子 pop。`;
@@ -249,7 +249,7 @@ const ZH_SCENES = {
     selling: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `你会爱上它的三个理由。`;
-        return `[镜头1] 中近景镜头，从角度一展现${ctx.product || ctx.brand}，突出卖点一。粗体文字"${ctx.sellingPoint1 || '高级品质'}"以动态入场动画弹出。[镜头2] 00:01.500 处切到不同角度展示卖点二，文字"${ctx.sellingPoint2 || '智能设计'}""。[镜头3] 00:03.000 处切到第三角度展示卖点三，文字"${ctx.sellingPoint3 || '超值之选'}"。每次切换揭晓一项新利益，配以 energetic 视觉转场。${ctx.colorGrading}。画外音（S1）以 energetic、销售导向的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 中近景镜头，从角度一展现${ctx.product || ctx.brand}，突出卖点一。粗体文字"${ctx.sellingPoint1 || '高级品质'}"以动态入场动画弹出。[镜头2] 00:01.500 处切到不同角度展示卖点二，文字"${ctx.sellingPoint2 || '智能设计'}""。[镜头3] 00:03.000 处切到第三角度展示卖点三，文字"${ctx.sellingPoint3 || '超值之选'}"。每次切换揭晓一项新利益，配以 energetic 视觉转场。${ctx.colorGradingZh}。画外音（S1）以 energetic、销售导向的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `每次切换同步的 quick swoosh、产品互动的触觉声，以及文字叠层出现时的明亮电子 pop。`;
@@ -261,7 +261,7 @@ const ZH_SCENES = {
     results: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `亲眼见证改变。`;
-        return `[镜头1] 中景镜头，展现一个人于真实场景中使用${ctx.product || ctx.brand}。镜头以中等速度从侧方跟拍，此人演示产品使用过程，清晰展现积极结果与满意感。使用前后的效果在视觉上令人信服。${ctx.lightingDesc}。此人神情由平静转为欣喜。画外音（S1）以热情的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+        return `[镜头1] 中景镜头，展现一个人于真实场景中使用${ctx.product || ctx.brand}。镜头以中等速度从侧方跟拍，此人演示产品使用过程，清晰展现积极结果与满意感。使用前后的效果在视觉上令人信服。${ctx.lightingDescZh}。此人神情由平静转为欣喜。画外音（S1）以热情的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
       },
       soundscape(ctx) {
         return `自然环境声、产品使用声，以及使用者满意的细微声响，全部笼罩在明亮氛围底噪中。`;
@@ -273,7 +273,7 @@ const ZH_SCENES = {
     cta: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `立即选购——限时优惠！`;
-        return `[镜头1] 固定镜头，${ctx.product || ctx.brand}醒目呈现，粗体文字叠层：顶部"${ctx.brand}"，中央大字号"${ctx.ctaText || '限时优惠'}"，底部按钮式"${ctx.slogan || '立即选购'}"。倒计时或"库存有限"提示增添紧迫感。${ctx.colorGrading}。构图以最大视觉冲击与转化为目标。`;
+        return `[镜头1] 固定镜头，${ctx.product || ctx.brand}醒目呈现，粗体文字叠层：顶部"${ctx.brand}"，中央大字号"${ctx.ctaText || '限时优惠'}"，底部按钮式"${ctx.slogan || '立即选购'}"。倒计时或"库存有限"提示增添紧迫感。${ctx.colorGradingZh}。构图以最大视觉冲击与转化为目标。`;
       },
       soundscape(ctx) {
         return `干净明亮的影棚声，每个文字元素出现时一声吸睛轻响，以及最后满足的 pop。`;
@@ -289,7 +289,7 @@ const ZH_SCENES = {
     teaser: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `非凡之事，正在到来。`;
-        return `[镜头1] 中景镜头，展现一处戏剧性、局部打光的舞台或场地空间。镜头以缓慢速度小幅推进，聚光灯扫过场景，露出活动布置的惊鸿一瞥。戏剧性低调光营造神秘与期待。动态揭晓动画弹出粗体文字"${ctx.eventName || ctx.brand + ' 活动'}"，其下"${ctx.eventDate || '敬请期待'}"。${ctx.colorGrading}。画外音（S1）以兴奋、神秘的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 中景镜头，展现一处戏剧性、局部打光的舞台或场地空间。镜头以缓慢速度小幅推进，聚光灯扫过场景，露出活动布置的惊鸿一瞥。戏剧性低调光营造神秘与期待。动态揭晓动画弹出粗体文字"${ctx.eventName || ctx.brand + ' 活动'}"，其下"${ctx.eventDate || '敬请期待'}"。${ctx.colorGradingZh}。画外音（S1）以兴奋、神秘的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `深沉共鸣的低频 rumble 逐渐增强，叠加聚光灯电机的扫动声与制造张力期待的电子 riser。`;
@@ -325,7 +325,7 @@ const ZH_SCENES = {
     info: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `记在日历上。${ctx.eventDate || '今年秋天'}。${ctx.eventLocation || '会展中心'}。`;
-        return `[镜头1] 固定镜头，定格在干净专业的背景上。文字叠层以流畅动画依次出现：主标题"${ctx.eventName || ctx.brand + ' 活动'}"，关键信息"${ctx.eventDate || '日期待定'}"与"${ctx.eventLocation || '地点待定'}"，以及醒目行动召唤按钮"${ctx.ctaText || '立即报名'}"。布局干净现代、以信息为导向。${ctx.colorGrading}。画外音（S1）以清晰、信息感的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 固定镜头，定格在干净专业的背景上。文字叠层以流畅动画依次出现：主标题"${ctx.eventName || ctx.brand + ' 活动'}"，关键信息"${ctx.eventDate || '日期待定'}"与"${ctx.eventLocation || '地点待定'}"，以及醒目行动召唤按钮"${ctx.ctaText || '立即报名'}"。布局干净现代、以信息为导向。${ctx.colorGradingZh}。画外音（S1）以清晰、信息感的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `干净专业的影棚氛围，每个信息元素出现时的细微电子轻响。`;
@@ -337,7 +337,7 @@ const ZH_SCENES = {
     cta: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `门票有限。别错过——今天就报名！`;
-        return `[镜头1] 固定镜头，画面中央醒目呈现"${ctx.eventName || ctx.brand + ' 活动'}"标志。其下，粗体"${ctx.ctaText || '立即报名'}"按钮式文字叠层轻轻脉动。"名额有限"提示增添紧迫感。背景为带微妙动态元素的 energetic 渐变。${ctx.colorGrading}。画外音（S1）以紧迫、兴奋的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 固定镜头，画面中央醒目呈现"${ctx.eventName || ctx.brand + ' 活动'}"标志。其下，粗体"${ctx.ctaText || '立即报名'}"按钮式文字叠层轻轻脉动。"名额有限"提示增添紧迫感。背景为带微妙动态元素的 energetic 渐变。${ctx.colorGradingZh}。画外音（S1）以紧迫、兴奋的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `明亮吸睛的影棚声，CTA 出现时一声满意轻响，以及微妙渐强紧迫感的电子铺底。`;
@@ -401,7 +401,7 @@ const ZH_SCENES = {
     join: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `你的未来，由此启程。加入 ${ctx.brand}。`;
-        return `[镜头1] 固定镜头，以干净现代动画在画面中央呈现"${ctx.brand}"标志。其下粗体"加入我们"以欢迎字体呈现，随后清晰的行动召唤"${ctx.ctaText || '立即应聘 ' + ctx.brand + '.com/careers'}"。背景为明亮乐观的渐变。${ctx.colorGrading}。画外音（S1）以温暖、邀请、收束的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 固定镜头，以干净现代动画在画面中央呈现"${ctx.brand}"标志。其下粗体"加入我们"以欢迎字体呈现，随后清晰的行动召唤"${ctx.ctaText || '立即应聘 ' + ctx.brand + '.com/careers'}"。背景为明亮乐观的渐变。${ctx.colorGradingZh}。画外音（S1）以温暖、邀请、收束的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `干净明亮的氛围，文字出现时一声欢迎轻响，随后轻柔 ambient 淡出。`;
@@ -422,75 +422,75 @@ const ZH_TWIST_SCENES = {
     visual(ctx) {
       const voZh = '这类故事，你已经看过一百遍了。';
       const env = ctx.industryData.environments[0];
-      return `[镜头1] ${ctx.styleKeywords}，一段建立性的全景镜头，缓缓铺开一个再普通不过的场景——${env}——仿佛只是一支寻常的广告。镜头以小幅度缓慢推近。柔和自然的灯光，毫无戏剧性。画面中，一行朴素克制的标题淡入，显示"${ctx.brand}"。画外音（S1）以平淡、就事论事的语气说道：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
+      return `[镜头1] ${ctx.styleKeywordsZh}，一段建立性的全景镜头，缓缓铺开一个再普通不过的场景——${env}——仿佛只是一支寻常的广告。镜头以小幅度缓慢推近。柔和自然的灯光，毫无戏剧性。画面中，一行朴素克制的标题淡入，显示"${ctx.brand}"。画外音（S1）以平淡、就事论事的语气说道：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
     },
     soundscape() {
       return `日常的环境底噪，故意平淡无奇，像一支普通广告的标配。`;
     },
     music(ctx) {
-      return `${ctx.musicStyle}，但音量压得很低、几乎无聊。`;
+      return `${ctx.musicStyleZh}，但音量压得很低、几乎无聊。`;
     }
   },
   twist_anomaly: {
     visual(ctx) {
       const voZh = '角落里那个小细节，几乎没人注意到。';
-      return `[镜头1] ${ctx.styleKeywords}，一个极特写镜头缓缓推进，落在某个看似微不足道、与周围格格不入的小细节上——这是要观众主动忽略的"反常点"。一束动机光把它单独照亮；镜头多停留了半秒。画面中不加任何标注，保持暧昧。画外音（S1）几乎是在耳边低语：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
+      return `[镜头1] ${ctx.styleKeywordsZh}，一个极特写镜头缓缓推进，落在某个看似微不足道、与周围格格不入的小细节上——这是要观众主动忽略的"反常点"。一束动机光把它单独照亮；镜头多停留了半秒。画面中不加任何标注，保持暧昧。画外音（S1）几乎是在耳边低语：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
     },
     soundscape() {
       return `一声极轻、稍显违和的音效，把观众的余光引向那个细节，然后迅速淡去。`;
     },
     music(ctx) {
-      return `${ctx.musicStyle}，只剩一个低沉的离调和音，暗示哪里不对，紧接着是沉默。`;
+      return `${ctx.musicStyleZh}，只剩一个低沉的离调和音，暗示哪里不对，紧接着是沉默。`;
     }
   },
   twist_misdirect: {
     visual(ctx) {
       const voZh = '所以你自然觉得，结局你已经猜到了。';
-      return `[镜头1] ${ctx.styleKeywords}，一个略显躁动的手持中景，循着大家熟悉、最容易猜到的套路往下走——事情似乎正奔向那个"理所当然"的结局。镜头略带晃动，悄悄营造不安；${ctx.colorGrading}。画外音（S1）带着一种刻意的、错误的自信，把观众带偏：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
+      return `[镜头1] ${ctx.styleKeywordsZh}，一个略显躁动的手持中景，循着大家熟悉、最容易猜到的套路往下走——事情似乎正奔向那个"理所当然"的结局。镜头略带晃动，悄悄营造不安；${ctx.colorGradingZh}。画外音（S1）带着一种刻意的、错误的自信，把观众带偏：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
     },
     soundscape() {
       return `日常场景开始"裂开"——一个小失误、一个错拍的节奏、一声细微的"出事了"的声音。`;
     },
     music(ctx) {
-      return `${ctx.musicStyle}，张力随熟悉的剧情显得要崩而缓慢上升。`;
+      return `${ctx.musicStyleZh}，张力随熟悉的剧情显得要崩而缓慢上升。`;
     }
   },
   twist_falseclimax: {
     visual(ctx) {
       const voZh = '看起来，要完了。好像从来就没戏。';
-      return `[镜头1] ${ctx.styleKeywords}，一个紧绷的特写镜头骤然推近，仿佛一切正以最坏的方式崩溃——故事似乎注定要走向最糟糕的版本。急促的 snap-zoom 与生硬的高对比光把张力顶到极限。画面中，一行刺眼的字幕打出"全都崩了"。画外音（S1）听上去像是认输：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
+      return `[镜头1] ${ctx.styleKeywordsZh}，一个紧绷的特写镜头骤然推近，仿佛一切正以最坏的方式崩溃——故事似乎注定要走向最糟糕的版本。急促的 snap-zoom 与生硬的高对比光把张力顶到极限。画面中，一行刺眼的字幕打出"全都崩了"。画外音（S1）听上去像是认输：<d>[中文] ${voZh}</d>，画面中不出现人物嘴唇。`;
     },
     soundscape() {
       return `一声刺耳的撞击、一记明显的"唱片卡带"声、一声无可置疑的"失败落地"声。`;
     },
     music(ctx) {
-      return `${ctx.musicStyle}，急坠至一个猝不及防的低谷——假象的终点。`;
+      return `${ctx.musicStyleZh}，急坠至一个猝不及防的低谷——假象的终点。`;
     }
   },
   twist_reveal: {
     visual(ctx) {
       const voZh = '你注意到那个细节了吗？它一直在。';
       const r = (typeof twistRevealZh === 'function') ? twistRevealZh(ctx) : { line: '真相此刻被揭开。', vo: voZh };
-      return `[镜头1] ${ctx.styleKeywords}，镜头拉远，揭示那个翻转一切的真相——前面那个看似不起眼的细节，才是整件事的全部答案。${r.line} 戏剧性的主光骤然翻转，冷调色调瞬间变暖、变亮。画面中央打出"${ctx.brand}"，下方落下一行简短的字："一直都在。"画外音（S1）带着会心一笑念出反转：<d>[中文] ${r.vo}</d>，画面中不出现人物嘴唇。`;
+      return `[镜头1] ${ctx.styleKeywordsZh}，镜头拉远，揭示那个翻转一切的真相——前面那个看似不起眼的细节，才是整件事的全部答案。${r.line} 戏剧性的主光骤然翻转，冷调色调瞬间变暖、变亮。画面中央打出"${ctx.brand}"，下方落下一行简短的字："一直都在。"画外音（S1）带着会心一笑念出反转：<d>[中文] ${r.vo}</d>，画面中不出现人物嘴唇。`;
     },
     soundscape() {
       return `一瞬间绝对的静默，紧接着那个"细节"咔哒一声落定，发出一声清脆、令人满足的音效。`;
     },
     music(ctx) {
-      return `${ctx.musicStyle}，一声干脆的戏剧性 sting，随后升腾为上扬、开阔的主题。`;
+      return `${ctx.musicStyleZh}，一声干脆的戏剧性 sting，随后升腾为上扬、开阔的主题。`;
     }
   },
   twist_payoff: {
     visual(ctx) {
       const slogan = ctx.slogan || '看仔细点。真相一直都在。';
       const cta = ctx.ctaText || ('到 ' + ctx.brand + ' 看见真相');
-      return `[镜头1] ${ctx.styleKeywords}，一个干净的 logo lockup 居中定格——"${ctx.brand}"下方一行 slogan"${slogan}"——反转之后，这行字被赋予了全新含义。镜头缓慢、自信地落定；${ctx.colorGrading}。画面下方打出 CTA："${cta}"。画外音（S1）以 slogan 收尾：<d>[中文] ${slogan}</d>，画面中不出现人物嘴唇。`;
+      return `[镜头1] ${ctx.styleKeywordsZh}，一个干净的 logo lockup 居中定格——"${ctx.brand}"下方一行 slogan"${slogan}"——反转之后，这行字被赋予了全新含义。镜头缓慢、自信地落定；${ctx.colorGradingZh}。画面下方打出 CTA："${cta}"。画外音（S1）以 slogan 收尾：<d>[中文] ${slogan}</d>，画面中不出现人物嘴唇。`;
     },
     soundscape() {
       return `一层自信、笃定的氛围环绕 logo 落定。`;
     },
     music(ctx) {
-      return `${ctx.musicStyle}，最终以一个干净、圆满、让反转稳稳落地的解决和弦结束。`;
+      return `${ctx.musicStyleZh}，最终以一个干净、圆满、让反转稳稳落地的解决和弦结束。`;
     }
   }
 };
