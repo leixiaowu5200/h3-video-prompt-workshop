@@ -50,6 +50,30 @@
         <div class="video-type-grid" id="videoTypeGrid"></div>
       </div>
 
+      <!-- 生成模式：文生视频 / 图生视频 -->
+      <div class="form-group">
+        <label>生成模式 <span class="hint">文生视频 或 图生视频（需提供参考图）</span></label>
+        <div class="genmode-grid" id="genModeGrid">
+          <div class="genmode-card active" data-mode="t2v">
+            <div class="icon">📝</div>
+            <div class="name">文生视频</div>
+            <div class="desc">仅用文字描述生成</div>
+          </div>
+          <div class="genmode-card" data-mode="i2v">
+            <div class="icon">🖼️</div>
+            <div class="name">图生视频</div>
+            <div class="desc">提供参考图（人物/产品/场景）</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 参考图（仅图生视频显示） -->
+      <div class="ref-images-section" id="refImagesSection" style="display:none;">
+        <div class="ref-images-tip">图生视频需提供参考图，提示词会自动写入「参考图1 / 参考图2 …」并在 subject_definitions、summary、retention 与各镜头中引用。例如：图1 人物、图2 产品、图3 场景。</div>
+        <div id="refImageList"></div>
+        <button type="button" class="btn-add-ref" id="addRefImageBtn">+ 添加参考图</button>
+      </div>
+
       <!-- 行业领域 -->
       <div class="form-group">
         <label>行业领域</label>
@@ -179,10 +203,25 @@
         <div class="fullref-section" id="fullRefSection">
           <div class="fullref-head">
             <div class="fullref-title">🎯 Full-Reference 全参考模式 · 整片六段式提示词</div>
-            <button class="btn-export" id="copyFullRefBtn">📋 复制整片提示词</button>
+            <span class="fullref-lang-note">中英文双栏 · 可分别一键复制</span>
           </div>
           <div class="fullref-meta" id="fullRefMeta"></div>
-          <pre class="fullref-content" id="fullRefContent"></pre>
+          <div class="fullref-lang-grid">
+            <div class="fullref-lang-box">
+              <div class="fullref-lang-head">
+                <span class="fullref-lang-name">中文</span>
+                <button class="btn-export" id="copyFullRefZhBtn">📋 复制中文</button>
+              </div>
+              <pre class="fullref-content" id="fullRefZhContent"></pre>
+            </div>
+            <div class="fullref-lang-box">
+              <div class="fullref-lang-head">
+                <span class="fullref-lang-name">English</span>
+                <button class="btn-export" id="copyFullRefEnBtn">📋 复制英文</button>
+              </div>
+              <pre class="fullref-content" id="fullRefEnContent"></pre>
+            </div>
+          </div>
         </div>
 
         <!-- 分镜头部 -->

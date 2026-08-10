@@ -1340,15 +1340,51 @@ function fmtTimecode(totalSec) {
 }
 
 // 单个镜头在 detailed_description 中的段落（[Shot N] + 时间码 + 描述 + 结构化镜头信息）
-function buildShotBlock(scene, index, startSec, lang) {
+// refNote：可选，图生视频时本镜头所用参考图备注（已带前导空格）
+function buildShotBlock(scene, index, startSec, lang, refNote) {
   const isZh = lang === 'zh';
   let body = (isZh ? scene.visualZh : scene.visualEn) || '';
   // 全局去掉模板自带的 [Shot N] / [镜头N] 前缀，避免嵌套（无论出现在开头还是中间）
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
   const tc = index === 0 ? '' : (fmtTimecode(startSec) + ', ');
   const marker = '[Shot ' + (index + 1) + '] ' + tc;
-  return marker + body + ' (Shot type: ' + scene.shotType + '; Camera: ' + scene.cameraMovement +
+  let out = marker + body + ' (Shot type: ' + scene.shotType + '; Camera: ' + scene.cameraMovement +
     '; Lighting: ' + scene.lighting + '; Duration: ' + scene.duration + 's.)';
+  if (refNote) out += refNote;
+  return out;
+}
+
+// 参考图类型 → 英文（用于英文提示词）
+function refTypeEn(type) {
+  const t = (type || '').trim();
+  const map = {
+    '人物': 'person', '角色': 'character', '主角': 'protagonist', '模特': 'model',
+    '产品': 'product', '商品': 'product', '场景': 'scene', '环境': 'environment',
+    '风格': 'style', 'logo': 'logo', '图标': 'icon', '其他': 'reference', '背景': 'background'
+  };
+  return map[t] || t || 'reference';
+}
+
+// 图生视频：计算第 shotIndex 个镜头所用参考图备注（中/英）
+function buildRefNoteForShot(refImages, shotIndex, isZh) {
+  if (!refImages || !refImages.length) return '';
+  const used = refImages.filter(r => {
+    const scope = r.scope;
+    if (scope === undefined || scope === null || scope === 'all') return true;
+    if (typeof scope === 'number') return scope === shotIndex;
+    if (Array.isArray(scope)) return scope.indexOf(shotIndex) >= 0;
+    return false;
+  });
+  if (!used.length) return '';
+  const parts = used.map(r => {
+    const num = refImages.indexOf(r) + 1;
+    return isZh
+      ? '[参考图' + num + ']（' + (r.type || '参考') + '）'
+      : '[Reference Image ' + num + '] (' + refTypeEn(r.type) + ')';
+  });
+  return isZh
+    ? ' 本镜头使用：' + parts.join('、') + '，保持与参考图一致。'
+    : ' This shot uses: ' + parts.join(', ') + ' — keep consistent with the reference images.';
 }
 
 // ========== Full-Reference 全参考模式：整片六段式提示词 ==========
@@ -1363,32 +1399,89 @@ function buildFullReference(scenes, formData, lang) {
   const n = scenes.length;
   const total = scenes.reduce((s, x) => s + x.duration, 0);
 
+  // 图生视频模式：读取参考图
+  const refImages = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages) && formData.referenceImages.length)
+    ? formData.referenceImages : [];
+  const isI2V = refImages.length > 0;
+
   // 计算各镜头起始时间码
   const starts = [];
   let acc = 0;
   for (let i = 0; i < n; i++) { starts.push(acc); acc += scenes[i].duration; }
   const shotRange = n > 1 ? '[Shot 1] to [Shot ' + n + ']' : '[Shot 1]';
 
+  // ---- subject_definitions ----
   let subjects = '<Subject 1> is the brand protagonist representing "' + brand + '", whose brand identity, wardrobe, on-screen logo and tagline (' +
     (slogan ? '"' + slogan + '"' : 'as specified by user') + ') must remain fully consistent and unchanged across every shot.\n';
   if (product) {
     subjects += '<Subject 2> is the core product/service: ' + product + '. Its geometry, material, label text, logo placement and structural details remain fully preserved across every angle.\n';
   }
+  if (isI2V) {
+    refImages.forEach((r, k) => {
+      const num = k + 1;
+      const typeZh = r.type || '参考';
+      const desc = r.desc || (isZh ? '用户提供的参考图' : 'user-provided reference image');
+      if (isZh) {
+        subjects += '<参考图' + num + '> 是用户提供的参考图（类型：' + typeZh + '）：' + desc + '。作为视觉参考，用于在全片中保持对应主体/元素外观与参考图一致。\n';
+      } else {
+        subjects += '<Reference Image ' + num + '> is a user-provided reference image (type: ' + refTypeEn(r.type) + '): ' + desc + '. Used as the visual reference to keep the corresponding subject/element consistent with this image throughout the video.\n';
+      }
+    });
+  }
 
-  const summary = '[reference generation] The target video is a ' + (isZh ? vt.name : vt.nameEn) + ' for ' + brand + ' in ' + (isZh ? st.name : st.nameEn) +
-    ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
-    '). Primary reference is the user-specified brand, product and visual style, to be generated as one connected storyboard and edited together in post-production.\n';
+  // ---- summary ----
+  let summary;
+  if (isI2V) {
+    const refDescZh = refImages.map((r, k) => '图' + (k + 1) + (r.type ? '（' + r.type + '）' : '')).join('、');
+    const refDescEn = refImages.map((r, k) => 'Image ' + (k + 1) + (r.type ? ' (' + refTypeEn(r.type) + ')' : '')).join(', ');
+    if (isZh) {
+      summary = '[图生视频生成] 目标视频基于用户提供的 ' + refImages.length + ' 张参考图（' + refDescZh + '）生成，是一部 ' + vt.name + '（品牌 ' + brand + '，' + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。以参考图为准保持主体外观一致，生成后于后期拼接成片。\n';
+    } else {
+      summary = '[image-to-video generation] The target video is generated from ' + refImages.length + ' user-provided reference images (' + refDescEn + '), as a ' + vt.nameEn + ' for ' + brand + ' in ' + st.nameEn +
+        ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
+        '). Visual identity must match the reference images; generated as one connected storyboard and edited together in post-production.\n';
+    }
+  } else {
+    summary = '[reference generation] The target video is a ' + (isZh ? vt.name : vt.nameEn) + ' for ' + brand + ' in ' + (isZh ? st.name : st.nameEn) +
+      ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
+      '). Primary reference is the user-specified brand, product and visual style, to be generated as one connected storyboard and edited together in post-production.\n';
+  }
 
+  // ---- retention_analysis ----
   let retention = '<Subject 1> (appears in ' + shotRange + '): fully_preserved - brand identity, wardrobe, logo and on-screen text stable as specified by user.\n';
   if (product) {
     retention += '<Subject 2> (appears in ' + shotRange + '): fully_preserved - product geometry, label and logo consistent.\n';
   }
+  if (isI2V) {
+    refImages.forEach((r, k) => {
+      const num = k + 1;
+      if (isZh) {
+        retention += '<参考图' + num + '> (appears in ' + shotRange + '): fully_preserved - 画面中的' + (r.type || '对应元素') + '外观、姿态与细节严格参照参考图' + num + '，保持完全一致。\n';
+      } else {
+        retention += '<Reference Image ' + num + '> (appears in ' + shotRange + '): fully_preserved - the ' + refTypeEn(r.type) + ' appearance, pose and details strictly match reference image ' + num + ' and stay fully consistent.\n';
+      }
+    });
+  }
 
+  // ---- detailed_description ----
   const styleLine = 'The target video uses ' + st.name + ' cinematic language with ' + (scenes[0].colorGrading || 'refined color grading') +
     ', ' + (scenes[0].lighting || 'motivated lighting') + ', and physically plausible camera movement.';
   let dd = styleLine + '\n';
-  scenes.forEach((s, i) => { dd += buildShotBlock(s, i, starts[i], lang) + '\n'; });
+  if (isI2V) {
+    const refsZh = refImages.map((r, k) => '[参考图' + (k + 1) + ']（' + (r.type || '参考') + '）').join('、');
+    const refsEn = refImages.map((r, k) => '[Reference Image ' + (k + 1) + '] (' + refTypeEn(r.type) + ')').join(', ');
+    if (isZh) {
+      dd += '全片严格参照以下参考图保持主体一致：' + refsZh + '。\n';
+    } else {
+      dd += 'Throughout the video, strictly use the following reference images to keep subjects consistent: ' + refsEn + '.\n';
+    }
+  }
+  scenes.forEach((s, i) => {
+    const refNote = buildRefNoteForShot(refImages, i, isZh);
+    dd += buildShotBlock(s, i, starts[i], lang, refNote) + '\n';
+  });
 
+  // ---- overall_soundscape / non_diegetic_music ----
   let sound = '';
   scenes.forEach((s) => { sound += (isZh ? s.soundscapeZh : s.soundscapeEn) + ' '; });
   sound = sound.trim() || (isZh ? '自然环境声与动作音效，随画面同步。' : 'Natural ambient sound and physical action sound, synchronized with the picture.');
@@ -1423,10 +1516,13 @@ function exportToMarkdown(scenes, formData) {
   md += `**总时长**: ${scenes.reduce((sum, s) => sum + s.duration, 0)}秒\n\n`;
   md += `---\n\n`;
 
-  const frLang = (typeof state !== 'undefined' && state.lang) || 'zh';
-  md += `## Full-Reference 整片六段式提示词（${frLang === 'zh' ? '中文' : 'English'}）\n\n`;
+  md += `## Full-Reference 整片六段式提示词（中文）\n\n`;
   md += '```\n';
-  md += buildFullReference(scenes, formData, frLang);
+  md += buildFullReference(scenes, formData, 'zh');
+  md += '\n```\n\n';
+  md += `## Full-Reference 整片六段式提示词（English）\n\n`;
+  md += '```\n';
+  md += buildFullReference(scenes, formData, 'en');
   md += '\n```\n\n';
   md += `---\n\n`;
 
@@ -1510,10 +1606,11 @@ function exportToWord(scenes, formData) {
   html += `<tr><td class="k">生成时间</td><td>${esc(now)}</td></tr>`;
   html += `</table>`;
 
-  // Full-Reference 整片六段式提示词（置顶，可直接粘贴给 H3）
-  const frLang = (typeof state !== 'undefined' && state.lang) || 'zh';
-  html += `<h2>Full-Reference 全参考模式 · 整片六段式提示词（${frLang === 'zh' ? '中文' : 'English'}）</h2>`;
-  html += `<div class="box box-${frLang === 'zh' ? 'zh' : 'en'}">${esc(buildFullReference(scenes, formData, frLang))}</div>`;
+  // Full-Reference 整片六段式提示词（置顶，可直接粘贴给 H3）—— 中英文双份
+  html += `<h2>Full-Reference 全参考模式 · 整片六段式提示词（中文）</h2>`;
+  html += `<div class="box box-zh">${esc(buildFullReference(scenes, formData, 'zh'))}</div>`;
+  html += `<h2>Full-Reference 全参考模式 · 整片六段式提示词（English）</h2>`;
+  html += `<div class="box box-en">${esc(buildFullReference(scenes, formData, 'en'))}</div>`;
   html += `<div class="note">该六段式提示词为整片连续脚本，每个镜头对应 [Shot N]；逐镜头独立生成后用剪映/PR 按时间码拼接成片。</div>`;
 
   // 每个场景

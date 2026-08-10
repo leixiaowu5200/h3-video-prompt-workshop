@@ -8,8 +8,12 @@ const state = {
   selectedIndustry: '',
   selectedStyle: 'cinematic',
   selectedRatio: '16:9',
+  genMode: 't2v', // 't2v' 文生视频 | 'i2v' 图生视频
+  referenceImages: [], // [{ type, desc, scope:'all'|number }]
   scenes: [],
   formData: {},
+  fullRefZh: '',
+  fullRefEn: '',
   lang: 'zh' // 'zh' | 'en'  默认中文，照顾国内用户
 };
 
@@ -24,6 +28,7 @@ function init() {
     b.classList.toggle('active', b.dataset.lang === state.lang);
   });
   bindEvents();
+  bindGenMode();
   bindInfoCards();
   // 主题切换初始化（恢复已选主题 + 绑定切换面板）
   initTheme();
@@ -179,9 +184,13 @@ function bindEvents() {
 
   // 导出按钮
   document.getElementById('copyAllBtn').addEventListener('click', handleCopyAll);
-  document.getElementById('copyFullRefBtn').addEventListener('click', () => {
-    if (!state.fullRef) return;
-    copyToClipboard(state.fullRef, document.getElementById('copyFullRefBtn'));
+  document.getElementById('copyFullRefZhBtn').addEventListener('click', () => {
+    if (!state.fullRefZh) return;
+    copyToClipboard(state.fullRefZh, document.getElementById('copyFullRefZhBtn'));
+  });
+  document.getElementById('copyFullRefEnBtn').addEventListener('click', () => {
+    if (!state.fullRefEn) return;
+    copyToClipboard(state.fullRefEn, document.getElementById('copyFullRefEnBtn'));
   });
   document.getElementById('exportWordBtn').addEventListener('click', handleExportWord);
   document.getElementById('printBtn').addEventListener('click', () => window.print());
@@ -255,6 +264,74 @@ function bindEvents() {
   });
 }
 
+// ========== 生成模式（文生视频 / 图生视频）+ 参考图 ==========
+function bindGenMode() {
+  const grid = document.getElementById('genModeGrid');
+  if (!grid) return;
+  grid.querySelectorAll('.genmode-card').forEach(card => {
+    card.addEventListener('click', () => {
+      grid.querySelectorAll('.genmode-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      state.genMode = card.dataset.mode;
+      const sec = document.getElementById('refImagesSection');
+      if (sec) sec.style.display = state.genMode === 'i2v' ? 'block' : 'none';
+      if (state.genMode === 'i2v' && state.referenceImages.length === 0) {
+        state.referenceImages.push({ type: '人物', desc: '', scope: 'all' });
+        renderRefImageRows();
+      }
+    });
+  });
+
+  const addBtn = document.getElementById('addRefImageBtn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    state.referenceImages.push({ type: '人物', desc: '', scope: 'all' });
+    renderRefImageRows();
+  });
+
+  const list = document.getElementById('refImageList');
+  if (list) {
+    // 输入即时写入 state
+    list.addEventListener('input', (e) => {
+      const row = e.target.closest('.ref-row');
+      if (!row) return;
+      const idx = parseInt(row.dataset.idx, 10);
+      const field = e.target.dataset.field;
+      if (field === 'type') state.referenceImages[idx].type = e.target.value;
+      else if (field === 'desc') state.referenceImages[idx].desc = e.target.value;
+      else if (field === 'scope') state.referenceImages[idx].scope = (e.target.value === 'all') ? 'all' : parseInt(e.target.value, 10);
+    });
+    // 删除
+    list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ref-del')) {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        state.referenceImages.splice(idx, 1);
+        renderRefImageRows();
+      }
+    });
+  }
+}
+
+function renderRefImageRows() {
+  const list = document.getElementById('refImageList');
+  if (!list) return;
+  list.innerHTML = state.referenceImages.map((r, i) => {
+    const idx = i + 1;
+    const scopeOpts = '<option value="all"' + ((r.scope === 'all' || r.scope === undefined) ? ' selected' : '') + '>全部镜头</option>' +
+      Array.from({ length: 12 }, (_, k) =>
+        '<option value="' + k + '"' + (r.scope === k ? ' selected' : '') + '>仅镜头' + (k + 1) + '</option>'
+      ).join('');
+    return '<div class="ref-row" data-idx="' + i + '">' +
+      '<div class="ref-idx">图' + idx + '</div>' +
+      '<div class="ref-fields">' +
+        '<input class="ref-type" data-field="type" value="' + escapeHtml(r.type || '') + '" placeholder="类型，如：人物/产品/场景">' +
+        '<input class="ref-desc" data-field="desc" value="' + escapeHtml(r.desc || '') + '" placeholder="描述，如：主角，穿蓝色西装的中年男性">' +
+        '<select class="ref-scope" data-field="scope">' + scopeOpts + '</select>' +
+      '</div>' +
+      '<button class="ref-del" data-idx="' + i + '" title="删除">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
 // ========== 底部 H3 信息卡片点击展开/收起 ==========
 function bindInfoCards() {
   document.querySelectorAll('.h3-info-card').forEach(card => {
@@ -296,6 +373,8 @@ function collectFormData() {
     eventName: document.getElementById('eventName').value.trim(),
     eventDate: document.getElementById('eventDate').value.trim(),
     eventLocation: document.getElementById('eventLocation').value.trim(),
+    genMode: state.genMode || 't2v',
+    referenceImages: state.referenceImages || [],
     totalDuration: parseInt((document.getElementById('totalDuration') && document.getElementById('totalDuration').value), 10) || 40
   };
 }
@@ -358,11 +437,15 @@ function renderStoryboard() {
   let acc = 0;
   for (let i = 0; i < n; i++) { starts.push(acc); acc += scenes[i].duration; }
 
-  // 构建整片六段式提示词（Full-Reference）
-  const fullRef = buildFullReference(scenes, state.formData, lang);
-  state.fullRef = fullRef;
-  const frEl = document.getElementById('fullRefContent');
-  if (frEl) frEl.textContent = fullRef;
+  // 构建整片六段式提示词（Full-Reference）—— 中英文双份
+  const fullRefZh = buildFullReference(scenes, state.formData, 'zh');
+  const fullRefEn = buildFullReference(scenes, state.formData, 'en');
+  state.fullRefZh = fullRefZh;
+  state.fullRefEn = fullRefEn;
+  const zhEl = document.getElementById('fullRefZhContent');
+  const enEl = document.getElementById('fullRefEnContent');
+  if (zhEl) zhEl.textContent = fullRefZh;
+  if (enEl) enEl.textContent = fullRefEn;
   const metaEl = document.getElementById('fullRefMeta');
   if (metaEl) {
     const minShot = Math.min.apply(null, scenes.map(s => s.duration));
@@ -370,7 +453,10 @@ function renderStoryboard() {
     if (minShot < 4) {
       warn = ' · ⚠ H3 单段最少 4 秒，当前有镜头仅 ' + minShot + ' 秒，建议总时长≥' + (n * 4) + ' 秒，或在剪辑中裁剪/减少镜头数';
     }
-    metaEl.textContent = n + ' 个镜头 · 总时长 ' + total + ' 秒 · 画幅 ' + (state.formData.aspectRatio || '16:9') + warn;
+    const modeLabel = (state.formData.genMode === 'i2v')
+      ? ('图生视频 · ' + (state.formData.referenceImages ? state.formData.referenceImages.length : 0) + ' 张参考图')
+      : '文生视频';
+    metaEl.textContent = n + ' 个镜头 · 总时长 ' + total + ' 秒 · 画幅 ' + (state.formData.aspectRatio || '16:9') + ' · ' + modeLabel + warn;
   }
 
   // 场景数量
@@ -416,7 +502,9 @@ function createSceneCard(scene, index, startSec) {
   const isZh = lang === 'zh';
   const langTag = isZh ? '（中文）' : '(English)';
   const timecodeLabel = index === 0 ? '0:00 起' : fmtTimecode(startSec) + ' 起';
-  const shotBlock = buildShotBlock(scene, index, startSec, lang);
+  const refNote = (state.formData && state.formData.genMode === 'i2v')
+    ? buildRefNoteForShot(state.formData.referenceImages, index, isZh) : '';
+  const shotBlock = buildShotBlock(scene, index, startSec, lang, refNote);
 
   card.innerHTML = `
     <div class="scene-header">
@@ -468,7 +556,8 @@ function createSceneCard(scene, index, startSec) {
 // ========== 复制全部提示词 ==========
 function handleCopyAll() {
   if (!state.scenes.length) return;
-  copyToClipboard(state.fullRef || '');
+  const combined = (state.fullRefZh || '') + '\n\n========== English ==========\n\n' + (state.fullRefEn || '');
+  copyToClipboard(combined);
 }
 
 // ========== 导出 Word ==========
@@ -786,7 +875,9 @@ function addHistory(record) {
       ratio: record.formData.ratio,
       duration: record.formData.duration,
       coreMessage: record.formData.coreMessage,
-      targetAudience: record.formData.targetAudience
+      targetAudience: record.formData.targetAudience,
+      genMode: record.formData.genMode,
+      referenceImages: record.formData.referenceImages
     },
     scenes: record.scenes.map(s => ({ ...s }))
   };
@@ -894,6 +985,13 @@ function loadHistoryRecord(id) {
     document.getElementById('duration').value = rec.formData.duration || '';
     document.getElementById('coreMessage').value = rec.formData.coreMessage || '';
     document.getElementById('targetAudience').value = rec.formData.targetAudience || '';
+    // 恢复生成模式与参考图
+    state.genMode = rec.formData.genMode || 't2v';
+    state.referenceImages = Array.isArray(rec.formData.referenceImages) ? rec.formData.referenceImages.map(r => ({ ...r })) : [];
+    document.querySelectorAll('#genModeGrid .genmode-card').forEach(c => c.classList.toggle('active', c.dataset.mode === state.genMode));
+    const refSec = document.getElementById('refImagesSection');
+    if (refSec) refSec.style.display = state.genMode === 'i2v' ? 'block' : 'none';
+    renderRefImageRows();
     // 重新渲染网格高亮
     renderVideoTypes();
     renderIndustries();
