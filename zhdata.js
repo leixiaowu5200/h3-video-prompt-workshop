@@ -166,6 +166,68 @@ const ZH_SCENES = {
       music(ctx) {
         return `中等速度、energetic 坚定的电子收尾，强收尾拍与明亮解决和弦干净淡出。`;
       }
+    },
+    health_awareness: {
+      visual(ctx) {
+        const voZh = ctx.voiceoverText || `我们总在照顾一切，却常常忘了照顾承载这一切的身体。`;
+        return `[镜头1] 中景镜头，跟拍一个忙碌的现代人穿梭于紧凑的一天——长时间伏案、肩颈紧绷、身体悄悄透支。镜头以缓慢、共情的推进，光线柔和却略带清冷，透出隐约的疲惫。此人停顿，抬手扶向后颈或后腰，一个"身体也需要被照顾"的微小醒觉。${ctx.colorGradingZh}。画外音（S1）以平静、唤醒的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+      },
+      soundscape(ctx) {
+        return `忙碌一天的闷响底噪——远处键盘声、一声轻叹、城市微鸣，逐渐沉淀为更安静、私密的空间感。`;
+      },
+      music(ctx) {
+        return `缓慢、内省的钢琴旋律，稀疏温暖，一记持续的弦音留出思考空间。`;
+      }
+    },
+    benefits: {
+      visual(ctx) {
+        const voZh = ctx.voiceoverText || `每天一点小小的仪式，累积成身体得以放松、舒展与被照顾的安心。`;
+        const subject = ctx.product || ctx.brand;
+        return `[镜头1] 特写镜头，${subject}在真实居家使用中，展现它带来的日常体验。镜头以缓慢速度做 360 度环绕。暖意包裹画面，人物明显松弛下来，一天的紧绷悄然软化。画面下方三分之一处依次淡入极简无衬线文字："日常轻松"，随后"温和养护"。${ctx.colorGradingZh}。画外音（S1）以温暖、讲好处的语气说道：<d>[中文] ${voZh}</d>`;
+      },
+      soundscape(ctx) {
+        return `水流的轻柔潺潺与安稳、舒缓的居家底噪下的细微嗡鸣。`;
+      },
+      music(ctx) {
+        return `中等速度、温暖柔和的木吉他曲，柔软铺底与温和安心的节奏。`;
+      }
+    },
+    audience: {
+      visual(ctx) {
+        const voZh = ctx.voiceoverText || `从久坐的上班族，到家中的父母与长辈——一份温和的日常仪式，落到哪里都合适。`;
+        const subject = ctx.product || ctx.brand;
+        return `[镜头1] 中远景镜头，呈现一组温和的人群剪影——伏案的上班族、操劳的父母、安享晚年的长辈——各自在${subject}中偷得片刻松弛。镜头以中等速度横向轻移，温暖包容的光线让人人都被看见。${ctx.colorGradingZh}。画外音（S1）以温暖、欢迎的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+      },
+      soundscape(ctx) {
+        return `柔软、有共鸣的日常声——椅子滚动、水壶、轻脚步，融入平静不慌的空间。`;
+      },
+      music(ctx) {
+        return `中等速度、明亮友好的原声主题，轻盈而欢迎。`;
+      }
+    },
+    reaction: {
+      visual(ctx) {
+        const voZh = ctx.voiceoverText || `当身体悄悄重新找回平衡，你可能会察觉一些"调整的信号"——一阵暖意、一声释然的呼气、片刻的困倦。那是身体在照顾自己，不是治疗，也不是承诺，只是它重新找回自己的节奏。`;
+        return `[镜头1] 特写镜头，定格一个人在居家养生时刻——皮肤上泛起温润的光泽、一次放松的呼气，或许是身体在调整、在松开时浮现的片刻困倦。镜头以缓慢、安抚的固定机位。柔和安抚的光。${ctx.colorGradingZh}。画外音（S1）以轻柔、科普的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+      },
+      soundscape(ctx) {
+        return `缓慢均匀的呼吸、水流的细微潺潺，以及安静、令人安心的房间底噪。`;
+      },
+      music(ctx) {
+        return `极轻柔、极简的环境铺底，缓慢呼吸般与画面同频。`;
+      }
+    },
+    brand_story: {
+      visual(ctx) {
+        const voZh = ctx.voiceoverText || `${ctx.brand}始于一个简单的信念：温和的日常养护，理应走进每一个家。`;
+        return `[镜头1] 中景镜头，展现${ctx.brand}的初心——一个温暖、亲手付出的养护瞬间，传递对日常健康的用心。镜头以缓慢小幅向左横移，每一处手势都透出真诚。附近灯具的暖光营造亲密氛围。${ctx.colorGradingZh}。画外音（S1）以温暖、讲故事的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+      },
+      soundscape(ctx) {
+        return `工坊或安宁居家真实的抚慰之声——轻柔脚步、水壶、温柔的触碰。`;
+      },
+      music(ctx) {
+        return `缓慢、真挚的钢琴与弦乐主题，诚恳而有开创感。`;
+      }
     }
   },
 

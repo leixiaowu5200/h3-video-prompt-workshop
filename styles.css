@@ -2085,3 +2085,126 @@ body::before {
   .theme-panel { width: 188px; right: -4px; }
 }
 
+/* ===================== 产品广告流程面板 ===================== */
+.flow-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.flow-preset-btn {
+  flex: 1 1 auto;
+  min-width: 84px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: center;
+}
+.flow-preset-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+.flow-preset-btn.active {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  background: var(--accent-glow);
+  font-weight: 600;
+}
+.flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.15);
+}
+.flow-step-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.flow-step-row.selected {
+  border-color: var(--accent-dim);
+  background: var(--bg-card-hover);
+}
+.flow-step-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.flow-step-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.flow-step-label .fs-name {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.flow-step-label .fs-name-en {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.flow-step-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.fs-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.fs-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.fs-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.flow-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ===================== 镜头提示词字数 ===================== */
+.char-count {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--accent-bright);
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-dim);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+

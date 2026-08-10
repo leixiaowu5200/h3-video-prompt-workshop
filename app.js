@@ -15,12 +15,14 @@ const state = {
   formData: {},
   fullRefZh: '',
   fullRefEn: '',
-  lang: 'zh' // 'zh' | 'en'  默认中文，照顾国内用户
+  lang: 'zh', // 'zh' | 'en'  默认中文，照顾国内用户
+  productFlow: { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() }
 };
 
 // ========== 初始化 ==========
 function init() {
   renderVideoTypes();
+  onVideoTypeChange();
   renderIndustries();
   renderStyles();
   renderRatios();
@@ -54,8 +56,103 @@ function renderVideoTypes() {
       grid.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
       card.classList.add('active');
       state.selectedVideoType = card.dataset.type;
+      onVideoTypeChange();
     });
   });
+}
+
+// ========== 产品广告流程面板 ==========
+function renderFlowSection() {
+  const presetWrap = document.getElementById('flowPresets');
+  const stepsWrap = document.getElementById('flowSteps');
+  const tip = document.getElementById('flowTip');
+  if (!presetWrap || !stepsWrap) return;
+
+  // 预设按钮
+  presetWrap.innerHTML = Object.entries(PRODUCT_FLOW_PRESETS).map(function (entry) {
+    const id = entry[0], p = entry[1];
+    return `<button type="button" class="flow-preset-btn ${state.productFlow.preset === id ? 'active' : ''}" data-preset="${id}" title="${p.desc}">${p.name}</button>`;
+  }).join('');
+
+  // 步骤列表：已选在前（按当前顺序），未选在后
+  const steps = state.productFlow.steps;
+  stepsWrap.innerHTML = PRODUCT_FLOW_STEP_ORDER.map(function (id) {
+    const step = PRODUCT_FLOW_STEPS[id];
+    if (!step) return '';
+    const idx = steps.indexOf(id);
+    const selected = idx !== -1;
+    const isFirst = idx <= 0;
+    const isLast = idx === steps.length - 1;
+    return `<div class="flow-step-row ${selected ? 'selected' : ''}">
+      <label class="flow-step-label">
+        <input type="checkbox" data-step="${id}" ${selected ? 'checked' : ''}>
+        <span class="fs-name">${step.name}</span>
+        <span class="fs-name-en">${step.nameEn}</span>
+      </label>
+      <div class="flow-step-actions">
+        <button type="button" class="fs-btn" data-up="${id}" ${!selected || isFirst ? 'disabled' : ''} title="上移">↑</button>
+        <button type="button" class="fs-btn" data-down="${id}" ${!selected || isLast ? 'disabled' : ''} title="下移">↓</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (tip) {
+    const names = steps.map(function (id) { return (PRODUCT_FLOW_STEPS[id] || {}).name || id; });
+    tip.textContent = names.length ? ('当前流程：' + names.join(' → ')) : '请至少勾选一个环节';
+  }
+
+  // 绑定预设按钮
+  presetWrap.querySelectorAll('.flow-preset-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const id = btn.dataset.preset;
+      state.productFlow.preset = id;
+      state.productFlow.steps = (PRODUCT_FLOW_PRESETS[id].steps || []).slice();
+      renderFlowSection();
+    });
+  });
+  // 绑定勾选
+  stepsWrap.querySelectorAll('input[data-step]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      const id = cb.dataset.step;
+      const arr = state.productFlow.steps;
+      const i = arr.indexOf(id);
+      if (cb.checked && i === -1) { arr.push(id); state.productFlow.preset = 'custom'; }
+      else if (!cb.checked && i !== -1) { arr.splice(i, 1); state.productFlow.preset = 'custom'; }
+      renderFlowSection();
+    });
+  });
+  // 绑定上移 / 下移
+  stepsWrap.querySelectorAll('button[data-up]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const id = btn.dataset.up;
+      const arr = state.productFlow.steps;
+      const i = arr.indexOf(id);
+      if (i > 0) { const t = arr[i - 1]; arr[i - 1] = arr[i]; arr[i] = t; state.productFlow.preset = 'custom'; }
+      renderFlowSection();
+    });
+  });
+  stepsWrap.querySelectorAll('button[data-down]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const id = btn.dataset.down;
+      const arr = state.productFlow.steps;
+      const i = arr.indexOf(id);
+      if (i !== -1 && i < arr.length - 1) { const t = arr[i + 1]; arr[i + 1] = arr[i]; arr[i] = t; state.productFlow.preset = 'custom'; }
+      renderFlowSection();
+    });
+  });
+}
+
+// 视频类型切换：产品广告显示流程面板并隐藏"镜头数量"，其它类型反之
+function onVideoTypeChange() {
+  const isProduct = state.selectedVideoType === 'product';
+  const flowSec = document.getElementById('flowSection');
+  const shotGroup = document.getElementById('shotCountGroup');
+  if (flowSec) flowSec.style.display = isProduct ? 'block' : 'none';
+  if (shotGroup) shotGroup.style.display = isProduct ? 'none' : 'block';
+  if (isProduct && (!state.productFlow || !state.productFlow.steps.length)) {
+    state.productFlow = { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() };
+  }
+  if (isProduct) renderFlowSection();
 }
 
 // ========== 渲染行业 ==========
@@ -404,6 +501,7 @@ function bindInfoCards() {
 function collectFormData() {
   return {
     videoType: state.selectedVideoType,
+    flowSteps: (state.productFlow ? state.productFlow.steps.slice() : []),
     industry: document.getElementById('industry').value,
     brandName: document.getElementById('brandName').value.trim(),
     productDesc: document.getElementById('productDesc').value.trim(),
@@ -484,6 +582,7 @@ function renderStoryboard() {
   const scenes = state.scenes;
   const n = scenes.length;
   const total = scenes.reduce((s, x) => s + x.duration, 0);
+  const totalChars = scenes.reduce((s, sc) => s + [...(sc['prompt' + (state.lang === 'zh' ? 'Zh' : 'En')] || '')].length, 0);
 
   // 计算各镜头起始时间码
   const starts = [];
@@ -494,7 +593,7 @@ function renderStoryboard() {
   const modeLabel = (state.formData.genMode === 'i2v')
     ? (' · 图生视频 ' + (state.formData.referenceImages ? state.formData.referenceImages.length : 0) + ' 张参考图')
     : ' · 文生视频';
-  document.getElementById('sceneCount').textContent = n + ' 个镜头 · 每段 ' + (scenes[0] ? scenes[0].duration : 15) + ' 秒 · 共 ' + total + ' 秒' + modeLabel;
+  document.getElementById('sceneCount').textContent = n + ' 个镜头 · 每段 ' + (scenes[0] ? scenes[0].duration : 15) + ' 秒 · 共 ' + total + ' 秒' + modeLabel + ' · 提示词约 ' + totalChars + ' 字';
 
   // 场景列表
   const list = document.getElementById('sceneList');
@@ -571,6 +670,7 @@ function createSceneCard(scene, index, startSec) {
       <div class="prompt-section">
         <div class="prompt-label">
           <span class="pname"><span class="dot" style="background:var(--accent)"></span>直投提示词 [Shot ${index + 1}] ${langTag}（可直接粘贴到海螺 H3）</span>
+          <span class="char-count" title="当前镜头提示词字数">${[...shotBlock].length} 字</span>
           <button class="btn-copy" data-copy="${index}-shot">复制本镜头</button>
         </div>
         <div class="prompt-content">${escapeHtml(shotBlock)}</div>

@@ -1332,21 +1332,159 @@ const TWIST_SCENE_TEMPLATES = [
  * @param {Object} formData - 用户输入
  * @returns {Array} 场景数据数组
  */
+// ========== 产品广告：流程步骤库 + 预设流程 ==========
+// 解决"产品广告永远 痛点→亮相→购买"的固定套路：把每个环节拆成可自由组合/排序的独立步骤。
+// 选一个预设快速套用，再按需增删、拖拽排序，每段即一个镜头。
+const PRODUCT_FLOW_STEPS = {};
+SCENE_TEMPLATES.product.forEach(function (s) { PRODUCT_FLOW_STEPS[s.id] = s; });
+
+PRODUCT_FLOW_STEPS.health_awareness = {
+  id: 'health_awareness', name: '健康重要性', nameEn: 'Health Awareness', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera holds a slow, empathetic push-in',
+  lighting: 'soft, natural light with a slightly cool, weary tone',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '不卖货，先共鸣：现代人忙碌中忽视身体，引出"日常养护很重要"。语气真诚、唤醒，不制造焦虑。',
+  generate(ctx) {
+    const vo = ctx.voiceoverText || 'We take care of everything — yet so often forget the body that carries us through all of it.';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, a medium shot follows a busy modern person moving through a packed day — long hours, tense shoulders, a body quietly overdrawn. ${ctx.cameraMovement}. The light is soft but slightly cool, hinting at quiet fatigue. They pause, lift a hand to the back of the neck or lower back, a small moment of realizing the body needs care too. ${ctx.colorGrading}. The narrator (S1) says in an off-screen voiceover with a calm, awakening tone: <d>[English] ${vo}</d> while the on-screen person's lips remain closed.`,
+      soundscape: `The muffled rush of a busy day — distant typing, a soft sigh, the faint hum of city life — settling into a calmer, more intimate room tone.`,
+      music: `A gentle, reflective piano melody at a slow tempo, sparse and warm, with a single sustained string note that opens space for thought.`
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.benefits = {
+  id: 'benefits', name: '设备好处', nameEn: 'Product Benefits', duration: 5,
+  shotType: 'close-up shot',
+  cameraMovement: 'The camera performs a slow 360-degree arc around the subject',
+  lighting: 'warm, inviting studio lighting',
+  textOverlay: true,
+  voiceover: true,
+  directorNote: '讲清设备带来的"体验/好处"而非硬广：居家养生仪式、放松舒缓、暖意通达。合规：只讲调理舒缓，绝不作功效承诺（中医/水疗行业由行业叙事自动注入具体语境）。',
+  generate(ctx) {
+    const subject = ctx.product || ctx.industryData.productContext || ctx.brand;
+    const vo = ctx.voiceoverText || 'Small daily rituals add up — a few quiet minutes that help the body relax, unwind, and feel cared for.';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, a close-up shot frames ${subject} in real home use, showing the everyday experience it brings. ${ctx.cameraMovement}. Warm, inviting light wraps the scene; the person looks visibly more at ease, the day's tension softening. Clean text overlays read: "Everyday Ease", then "Gentle Care" in a minimal sans-serif font. ${ctx.colorGrading}. The narrator (S1) says in an off-screen voiceover with a warm, benefit-led tone: <d>[English] ${vo}</d>`,
+      soundscape: `The soft trickle of water and a faint, soothing hum under a calm home ambience.`,
+      music: `A warm, mellow acoustic piece at a moderate tempo, with soft pads and a gentle, reassuring rhythm.`
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.audience = {
+  id: 'audience', name: '适合人群', nameEn: 'Who It’s For', duration: 5,
+  shotType: 'medium-wide shot',
+  cameraMovement: 'The camera tracks gently across a sequence of everyday people',
+  lighting: 'warm, inclusive lighting',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '展示适合的人群：久坐上班族、注重日常养护者、全家人等。包容、温暖，不制造焦虑。',
+  generate(ctx) {
+    const subject = ctx.product || ctx.industryData.productContext || 'the product';
+    const vo = ctx.voiceoverText || 'From busy professionals to parents and elders at home — a gentle daily ritual that fits wherever you are.';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, a medium-wide shot presents a gentle cross-section of everyday people — a desk-bound professional, a parent, an elder — each stealing a quiet moment of relaxation with ${subject}. ${ctx.cameraMovement}. Warm, inclusive lighting makes everyone feel seen. ${ctx.colorGrading}. The narrator (S1) says in an off-screen voiceover with a warm, welcoming tone: <d>[English] ${vo}</d> while the on-screen person's lips remain closed.`,
+      soundscape: `Soft, relatable everyday sounds — a chair rolling, a kettle, gentle footsteps — blended into a calm, unhurried bed.`,
+      music: `A bright, friendly acoustic theme at a moderate tempo, light and welcoming.`
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.reaction = {
+  id: 'reaction', name: '好转反应', nameEn: 'Adjustment Reactions', duration: 5,
+  shotType: 'close-up shot',
+  cameraMovement: 'The camera holds a slow, reassuring static shot',
+  lighting: 'soft, warm, reassuring light',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '科普"调理期间的好转反应"：身体自我调整时可能出现的温暖、放松、困倦、排寒等正常现象。合规铁律：绝不宣称治疗/疗效，仅为温和居家养生体验，如有不适请咨询专业人士。',
+  generate(ctx) {
+    const vo = ctx.voiceoverText || 'As the body gently rebalances, you may notice small signs of adjustment — a warm flush, a long sigh of release, a moment of drowsiness. These are the body tending to itself. Not a treatment, not a promise — just your body finding its rhythm again.';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, a calm close-up shot shows a person during a home wellness session — a gentle sheen of warmth on the skin, a relaxed exhale, perhaps a moment of drowsiness as the body adjusts and lets go. ${ctx.cameraMovement}. Soft, reassuring light. ${ctx.colorGrading}. The narrator (S1) says in an off-screen voiceover with a gentle, informative tone: <d>[English] ${vo}</d> while the on-screen person's lips remain closed.`,
+      soundscape: `A slow, even breath, the faint trickle of water, and a hushed, calming room tone.`,
+      music: `A very soft, minimal ambient pad at a slow tempo, breathing with the scene.`
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.brand_story = {
+  id: 'brand_story', name: '品牌故事', nameEn: 'Brand Story', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera slowly trucks left with small amplitude at slow speed',
+  lighting: 'cinematic warm lighting with practical light sources',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '讲品牌初心/理念：专注于居家养生调理，陪伴家庭日常。温和、真诚。',
+  generate(ctx) {
+    const vo = ctx.voiceoverText || `${ctx.brand} began with a simple belief: that gentle daily care belongs in every home.`;
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, a medium shot shows the origin of ${ctx.brand} — a warm, hands-on moment of crafting or caring, conveying dedication to everyday wellness. ${ctx.cameraMovement}, revealing authenticity in every gesture. Warm practical lighting from a nearby lamp creates an intimate atmosphere. ${ctx.colorGrading}. The narrator (S1) says in an off-screen voiceover with a warm, storytelling tone: <d>[English] ${vo}</d> while the on-screen person's lips remain closed.`,
+      soundscape: `The authentic, comforting sounds of a workshop or home at peace — soft footsteps, a kettle, gentle handling.`,
+      music: `A tender piano and strings theme at a slow tempo, sincere and founding.`
+    };
+  }
+};
+
+// 预设流程：选一个快速套用，之后再自由增删 / 排序
+const PRODUCT_FLOW_PRESETS = {
+  standard: {
+    name: '标准转化流',
+    desc: '痛点引入 → 产品亮相 → 功能展示 → 使用场景 → 购买引导（经典带货结构）',
+    steps: ['problem', 'reveal', 'features', 'lifestyle', 'cta']
+  },
+  educate: {
+    name: '种草科普流',
+    desc: '健康重要性 → 设备好处 → 使用场景 → 适合人群 → 好转反应（无购买引导）',
+    steps: ['health_awareness', 'benefits', 'lifestyle', 'audience', 'reaction']
+  },
+  trust: {
+    name: '品牌信任流',
+    desc: '品牌故事 → 产品亮相 → 功能展示 → 适合人群 → 购买引导',
+    steps: ['brand_story', 'reveal', 'features', 'audience', 'cta']
+  },
+  minimal: {
+    name: '极简种草流',
+    desc: '产品亮相 → 设备好处 → 使用场景（三镜说完）',
+    steps: ['reveal', 'benefits', 'lifestyle']
+  }
+};
+
+// 流程步骤在面板中的展示顺序（含全部可选项）
+const PRODUCT_FLOW_STEP_ORDER = [
+  'problem', 'reveal', 'features', 'lifestyle', 'cta',
+  'health_awareness', 'benefits', 'audience', 'reaction', 'brand_story'
+];
+
 function generateStoryboard(formData) {
   const ctx = buildContext(formData);
+  // 产品广告：若用户选择了「流程」，则按所选步骤组装（自由组合 / 排序）；剧情反转风格仍走专用模板
+  const isProductFlow = (formData.videoType === 'product' && formData.style !== 'twist'
+    && Array.isArray(formData.flowSteps) && formData.flowSteps.length > 0);
   let templates;
   if (formData.style === 'twist') {
     // 剧情反转风格使用专用反转结构模板，并关闭通用 flavor 叠加（避免重复）
     templates = TWIST_SCENE_TEMPLATES;
     ctx.narrativeFlavor = '';
     ctx.narrativeFlavorZh = '';
+  } else if (isProductFlow) {
+    // 产品广告：按用户所选「流程」组装步骤（自由组合 / 排序）
+    templates = formData.flowSteps
+      .map(function (id) { return PRODUCT_FLOW_STEPS[id]; })
+      .filter(Boolean);
   } else {
     const videoType = formData.videoType || 'corporate';
     templates = SCENE_TEMPLATES[videoType] || SCENE_TEMPLATES.corporate;
   }
 
-  // 镜头数量：用户指定的段数（默认 4，范围 2–10）；超出模板长度时按模板顺序环绕复用，保证角色连贯
-  const shotCount = Math.min(10, Math.max(2, parseInt(formData.shotCount, 10) || 5));
+  // 镜头数量：产品广告流程 = 所选步骤数（每个步骤即一段）；其它类型 = 用户指定的段数（默认 5，范围 2–10），超出模板长度时环绕复用
+  const shotCount = isProductFlow
+    ? templates.length
+    : Math.min(10, Math.max(2, parseInt(formData.shotCount, 10) || 5));
   // 单镜头时长：每段 = 一次 H3 生成（默认 15 秒，可选 5/10 秒），每段独立成片
   const shotDur = [5, 10, 15].includes(formData.shotDur) ? formData.shotDur : 15;
 
