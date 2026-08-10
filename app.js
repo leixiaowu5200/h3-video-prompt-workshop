@@ -248,6 +248,21 @@ function bindEvents() {
   // 回到顶部按钮
   bindBackToTop();
 
+  // 主动收藏（保存到历史）
+  document.getElementById('saveHistoryBtn').addEventListener('click', () => {
+    if (!state.scenes || !state.scenes.length) {
+      showToast('请先生成提示词再收藏', 'warn');
+      return;
+    }
+    addHistory({
+      id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      time: new Date().toISOString(),
+      formData: state.formData,
+      scenes: state.scenes
+    });
+    showToast('✅ 已收藏，可在 📚历史 查看');
+  });
+
   // 历史记录
   document.getElementById('historyBtn').addEventListener('click', openHistory);
   document.getElementById('historyClose').addEventListener('click', closeHistory);
@@ -423,7 +438,7 @@ function handleGenerate() {
       formData: formData,
       scenes: state.scenes
     });
-    showToast('分镜脚本生成完成！共 ' + state.scenes.length + ' 个场景');
+    showToast('分镜脚本生成完成！已自动保存到历史（也可点 📌收藏 手动保存）');
   }, 600);
 }
 
@@ -510,9 +525,10 @@ function createSceneCard(scene, index, startSec) {
   const isZh = lang === 'zh';
   const langTag = isZh ? '（中文）' : '(English)';
   const timecodeLabel = index === 0 ? '0:00 起' : fmtTimecode(startSec) + ' 起';
-  const refNote = (state.formData && state.formData.genMode === 'i2v')
-    ? buildRefNoteForShot(state.formData.referenceImages, index, isZh) : '';
-  const shotBlock = buildShotBlock(scene, index, startSec, lang, refNote);
+  const refImages = (state.formData && state.formData.genMode === 'i2v' && Array.isArray(state.formData.referenceImages))
+    ? state.formData.referenceImages : [];
+  const refNote = refImages.length ? buildRefNoteForShot(refImages, index, isZh) : '';
+  const shotBlock = buildShotBrief(scene, index, startSec, lang, refNote, refImages);
 
   card.innerHTML = `
     <div class="scene-header">
@@ -936,7 +952,7 @@ function renderHistoryList() {
   const list = getHistory();
   const wrap = document.getElementById('historyList');
   if (!list.length) {
-    wrap.innerHTML = '<div class="history-empty">📭 暂无历史记录<br><span>生成第一条分镜后会自动出现在这里</span></div>';
+    wrap.innerHTML = '<div class="history-empty">📭 暂无历史记录<br><span>生成提示词后会自动保存，或点操作栏的 📌收藏 主动保存</span></div>';
     return;
   }
   wrap.innerHTML = list.map(r => {

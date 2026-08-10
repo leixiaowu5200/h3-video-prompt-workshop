@@ -1400,9 +1400,96 @@ function cleanVisualForSpeech(body) {
   return s;
 }
 
-// 单个镜头在 detailed_description 中的段落（[Shot N] + 时间码 + 描述 + 美学控制 + 台词）
+// 时间（秒）格式化：整数不带小数，否则保留 1 位
+function fmtDurLocal(d) {
+  const v = Math.round(d * 10) / 10;
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+// 图生视频：按 H3 模板规则，在绝对开头输出连续的图片引用前缀
+// 例：@参考图1作为人物视觉参考@参考图2作为产品视觉参考@参考图3作为场景视觉参考
+function buildImageRefLine(refImages, isZh) {
+  if (!refImages || !refImages.length) return '';
+  const parts = refImages.map((r, i) => {
+    const num = i + 1;
+    const t = (r.type || '参考');
+    return isZh
+      ? '@参考图' + num + '作为' + t + '视觉参考'
+      : '@Image' + num + ' as ' + refTypeEn(t) + ' reference';
+  });
+  return parts.join('') + (isZh ? '' : ' ');
+}
+
+// 单镜头的结构化自然语言简报核心（时间线 + 镜头运动 + 视觉风格 + 声音设计）
+// 用于让每个镜头的提示词填满其时长，符合 H3「时间段无缺口覆盖完整时长、全正向描述」的要求
+function buildShotBriefCore(scene, lang) {
+  const isZh = lang === 'zh';
+  const dur = scene.duration || 5;
+  const cam = isZh ? (CAM_ZH[(scene.cameraMovement || '').trim()] || scene.cameraMovement || '')
+                   : (scene.cameraMovement || '');
+  const shot = isZh ? (SHOT_TYPE_ZH[(scene.shotType || '').trim()] || scene.shotType || '')
+                    : (scene.shotType || '');
+  const light = isZh ? (LIGHT_ZH[(scene.lighting || '').trim()] || scene.lighting || '')
+                     : (scene.lighting || '');
+  const color = scene.colorGrading || '';
+
+  // 时间分段（三等分，覆盖完整时长，无缺口）
+  const seg = dur / 3;
+  const t1 = fmtDurLocal(seg);
+  const t2 = fmtDurLocal(seg * 2);
+
+  // 从镜头正文抽取首句作为铺设、次句作为推进，让时间线落到真实内容而非空话
+  let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
+  // 去掉模板自带的 [Shot N] / [镜头N] 前缀，避免泄漏进时间线
+  body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+  const clauses = body.split(/[，。；,.\n]/).map(s => s.trim()).filter(Boolean);
+  // 抽取有意义的铺设句：首句若过短则顺延拼接下一句，避免英文只剩 "cinematic" 之类
+  const limit = isZh ? 12 : 24;
+  let setup = clauses[0] || (isZh ? '主体进入画面' : 'the subject enters frame');
+  let ci = 1;
+  while (setup.length < limit && ci < clauses.length) { setup += (isZh ? '，' : ' ') + clauses[ci]; ci++; }
+  const mid = clauses[ci] || clauses[1] || (isZh ? '动作持续推进，情绪逐步积累' : 'action continues, emotion builds');
+
+  const sound = isZh
+    ? (scene.soundscapeZh || '贴合画面节奏的自然环境底噪')
+    : (scene.soundscapeEn || 'natural ambient sound matching the scene');
+
+  const closing = isZh
+    ? (scene.textOverlay ? ('画面以文字「' + scene.textOverlay + '」收束')
+                          : (shot + '稳定落定，主体外观与参考图保持一致，动作达成明确结果'))
+    : (scene.textOverlay ? ('closes on the on-screen text "' + scene.textOverlay + '"')
+                         : (shot + ' settles, subject stays consistent with the reference, action lands on a clear result'));
+
+  const beats = isZh
+    ? [
+        '0—' + t1 + '秒：' + shot + '建立，画面呈现「' + setup + '」，' + light + '。',
+        t1 + '—' + t2 + '秒：' + mid + '，主体神态与姿态发生可见变化，情绪逐步积累。',
+        t2 + '—' + dur + '秒：' + closing + '，' + light + '收束，主体一致，画面定格于明确结果。'
+      ]
+    : [
+        '0-' + t1 + 's: ' + shot + ' establishes — ' + setup + '. ' + light + '.',
+        t1 + '-' + t2 + 's: ' + mid + '; the subject’s expression and posture shift visibly as emotion builds.',
+        t2 + '-' + dur + 's: ' + closing + '; ' + light + ' settles, subject consistent, frame locks on a clear result.'
+      ];
+
+  const timeline = (isZh ? '【时间线 · 共 ' + dur + ' 秒】\n' : '【Timeline · ' + dur + 's total】\n') + beats.join('\n');
+  const cameraLine = isZh
+    ? '【镜头运动】景别·' + shot + '；运镜·' + cam + '。'
+    : '【Camera】Shot size: ' + shot + '; Movement: ' + cam + '.';
+  const visualLine = isZh
+    ? '【视觉风格与材质】' + light + (color ? ('，' + color) : '') + '。'
+    : '【Visual style & material】' + light + (color ? (', ' + color) : '') + '.';
+  const soundLine = isZh
+    ? '【声音设计】' + sound + '。'
+    : '【Sound design】' + sound + '.';
+
+  return '\n' + timeline + '\n' + cameraLine + '\n' + visualLine + '\n' + soundLine;
+}
+
+// 单个镜头在 detailed_description 中的段落（[Shot N] + 时间码 + 描述 + 美学控制 + 台词 + 结构化简报）
 // refNote：可选，图生视频时本镜头所用参考图备注（已带前导空格）
-function buildShotBlock(scene, index, startSec, lang, refNote) {
+// opts.includeMarker：是否保留 [Shot N] 标记（detailed_description 用 true；分镜卡片单独成片用 false）
+function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
   const isZh = lang === 'zh';
   const dialogueLine = scene.dialogueLine || '';
   // 使用纯净版（未追加 per-shot flavor），避免整片六段式里风格/行业语境被每个镜头重复一遍
@@ -1413,11 +1500,12 @@ function buildShotBlock(scene, index, startSec, lang, refNote) {
   body = cleanVisualForSpeech(body);
 
   const tc = index === 0 ? '' : (fmtTimecode(startSec) + ', ');
-  const marker = '[Shot ' + (index + 1) + '] ' + tc;
+  const includeMarker = !(opts && opts.includeMarker === false);
+  const marker = includeMarker ? ('[Shot ' + (index + 1) + '] ' + tc) : '';
 
   // 美学控制（仅当景别/运镜/光线均能翻译为中文时才显示，避免回退成英文造成中英混杂）
   let ctrl = '';
-  if (isZh) {
+  if (isZh && includeMarker) {
     const st = SHOT_TYPE_ZH[(scene.shotType || '').trim()] || '';
     const cam = CAM_ZH[(scene.cameraMovement || '').trim()] || '';
     const light = LIGHT_ZH[(scene.lighting || '').trim()] || '';
@@ -1438,7 +1526,22 @@ function buildShotBlock(scene, index, startSec, lang, refNote) {
 
   let out = marker + body + ctrl + dl;
   if (refNote) out += refNote;
+  // 追加结构化自然语言简报（时间线 + 镜头运动 + 视觉风格 + 声音设计），让单镜填满时长
+  out += buildShotBriefCore(scene, lang);
   return out;
+}
+
+// 分镜卡片「直投提示词」专用：H3 标准开头 + 参考图前缀 + 结构化简报（不含 [Shot N] 标记）
+function buildShotBrief(scene, index, startSec, lang, refNote, refImages) {
+  const isZh = lang === 'zh';
+  const dur = scene.duration || 5;
+  const imgRefs = buildImageRefLine(refImages, isZh);
+  const article = (String(dur).charAt(0) === '8') ? 'an' : 'a';
+  const opening = isZh
+    ? ('生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频：\n')
+    : ('Generate ' + article + ' ' + dur + '-second, 16:9, 2K, native stereo, MiniMax H3 video:\n');
+  const block = buildShotBlock(scene, index, startSec, lang, refNote, { includeMarker: false });
+  return imgRefs + opening + block;
 }
 
 // 参考图类型 → 英文（用于英文提示词）
