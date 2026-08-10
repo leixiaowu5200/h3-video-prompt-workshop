@@ -927,9 +927,26 @@ async function handleQwenOptimize(direction) {
 
   let system = '你是 MiniMax H3 视频提示词专家，严格遵循官方 H3 Prompt Writing Guide。请把用户的中文 H3 提示词改写为地道、专业的英文提示词，并保留三字段结构。\n\n【强制格式规则】\n1. 字段顺序固定为 integrated_multimodal_description → overall_soundscape → non_diegetic_music，每段一字段、段间空一行，不要输出任何多余说明文字或 Markdown。\n2. integrated_multimodal_description 以 [Shot 1] 开头描述起始风格与构图；如需多镜头，后续用 [Shot 2] At 00:03.500, 这样的时间码（MM:SS.mmm，落在视频时长内）标记切镜；普通切镜用 the camera cuts to / the shot transitions to。\n3. 运镜写成自然英文动作，包含「运动类型 + 幅度 + 速度」三维度，例如 The camera pushes in with small amplitude at slow speed；幅度/速度仅在有意义时加（中幅度、常速通常省略）。\n4. 说话人用稳定 ID 如 (S1) / (S2)；对白与歌词用 <d>[English] ... </d> 包裹并原文照抄不翻译；画外音注明 says in an off-screen voiceover 并说明对应角色嘴唇闭合。\n5. 屏幕上真实可见的文字（标语/招牌/字幕）用英文双引号包裹，原文照抄不翻译。\n6. overall_soundscape：用 1–4 句英文概括全片环境声、物理动作声、非语言人声（风/雨/脚步/布料/呼吸/笑声等）；对话与剧情音已在前字段，不要重复；整片完全静音才用 N/A。\n7. non_diegetic_music：用 1–3 句英文描述只有观众能听到、角色听不到的配乐，聚焦乐器、速度、节奏与动态变化；不要用抽象情绪词，也不要解释音乐的情绪功能；无配乐用 N/A。';
 
-  // 水疗养生行业：追加「调理不治疗」合规铁律，约束千问优化输出
+  // 水疗养生行业：追加「调理不治疗」合规铁律 + 健康观念背书库
   if (state.formData.industry === 'hydro') {
     system += '\n\n【本片合规铁律·水疗养生类】\n- 仅可用「调理、舒缓、温通、促进气血运行、放松筋骨、帮助维持平衡」等温和表述；\n- 严禁出现「治疗、治愈、医治、根治、防病、抗癌、消炎、替代药物、医疗功效」等任何医疗宣称或疗效承诺；\n- 不可暗示可预防、诊断或治疗任何疾病；如涉及注意事项，仅可沿用「本品不能代替药物；孕妇、儿童及重大疾病者慎用」等安全提示。';
+
+    // 注入健康观念背书库（来自张大春《健康观念治疗》、黄帝内经等用户知识库）
+    const ind = (typeof INDUSTRIES !== 'undefined') ? INDUSTRIES.hydro : null;
+    const knowledge = ind && ind.healthKnowledge ? ind.healthKnowledge : null;
+    if (knowledge) {
+      system += '\n\n【水疗养生行业知识库·健康观念背书（须自然嵌入提示词，体现行业背书与文化厚度）】\n' +
+        '核心观念：' + knowledge.coreIdea + '\n' +
+        '健康三道门：' + knowledge.threeDoors + '\n' +
+        '治与调：' + knowledge.cureVsCondition + '\n' +
+        '十一鱼：' + knowledge.elevenFish + '\n' +
+        '温度解百病：' + knowledge.temperature + '\n' +
+        '因果：' + knowledge.causeAndEffect + '\n' +
+        '黄帝内经：' + knowledge.huangDi + '\n' +
+        '求救信号：' + knowledge.warningSignals + '\n' +
+        '调理边界：' + knowledge.boundaries + '\n\n' +
+        '【使用指引】这些背书用于在科普镜头（健康重要性/设备好处/好转反应/适合人群）中自然出现 1-2 句，体现行业洞察；不要堆砌、不要逐条搬运；切勿与上方合规铁律冲突——遇到冲突以合规铁律为准。';
+    }
   }
 
   // 若用户填了方向，拼进 user 提示词引导千问

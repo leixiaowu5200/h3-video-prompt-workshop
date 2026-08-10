@@ -161,8 +161,73 @@ const INDUSTRIES = {
     keywords: ['hydrotherapy', 'gentle warmth', 'deep relaxation', 'qi and blood circulation', 'meridian warming', 'home spa ritual', 'natural wellness', 'essential oils and mineral bath salts', 'warm meridian conditioning', 'lower-limb meridian warming', 'daily home wellness ritual', 'Kangfu foot-bath barrel', 'one-machine dual use (foot bath + bath)', 'four-season foot bath (spring lift-yang, summer dispel dampness, autumn moisten lungs, winter warm dantian)', 'spine-warming pearl sweat', 'dispelling cold and dampness', 'shockwave home spa', 'wellness for all ages and busy urbanites'],
     productContext: 'Juqing MOYA ultrasonic hydrotherapy equipment (GSPA home spa machine, e.g. GO-800 and Kangfu foot-bath barrel) for foot baths and full-body soaking — one machine with two uses by swapping the bubble pad and hose; paired with German-imported MOYA essential oils and mineral bath salts (chamomile, pine needle, juniper, lavender, eucalyptus); 32-year brand now popularized as a home appliance for a warm meridian-conditioning daily ritual',
     colorPalette: 'warm water tones with soft amber, jade green and clean white accents',
-    industryNarrative: 'The scene treats hydrotherapy as a gentle daily wellness ritual — a few drops of imported essential oil and a scoop of mineral bath salt melt into warm water while fine ultrasonic bubbles embrace the feet and body, helping the body relax and unwind. Warmth reaches deep into the spine and limbs, encouraging a soft "pearl-sweat" that releases cold and dampness; after stepping out the body stays gently warm for a while, leaving one refreshed rather than drained. The four seasons guide the foot bath: spring to lift yang and consolidate, summer to dispel damp-heat, autumn to moisten lungs and bowels, winter to warm the dantian. It is framed strictly as a soothing home wellness ritual.',
-    industryNarrativeZh: '本场戏将水疗呈现为一种温和的日常养生仪式——滴入德国进口精油、撒入矿物浴盐，温水与细密气泡包裹双足与全身，帮助放松舒缓。暖意由脊柱与四肢深处透出，引出温润的「珍珠汗」，把体内的寒湿轻轻排散；出水后身体仍持续温热片刻，越泡越精神而非疲惫。四季泡脚各有讲究：春升阳固脱、夏祛暑湿、秋肺润肠濡、冬丹田温灼。全程仅以「调理、舒缓、温通、居家养生与放松」的方式呈现，绝不作任何功效承诺。'
+    industryNarrative: 'This scene frames water therapy as a gentle daily wellness ritual — part of a lifestyle where people take charge of their own well-being rather than waiting for illness. A few drops of imported essential oil and a scoop of mineral bath salt melt into warm water; fine ultrasonic bubbles embrace the feet and body, helping one relax and unwind. Warmth reaches deep into the spine and limbs, encouraging a soft "pearl-sweat" that releases cold and dampness; after stepping out the body stays gently warm for a while, refreshed rather than drained. The four seasons guide the foot bath: spring lifts yang and consolidates, summer dispels damp-heat, autumn moistens lungs and bowels, winter warms the dantian. The whole experience is framed as a soothing home self-care ritual — supporting the body\'s natural balance, with no outcome promises of any kind.',
+    industryNarrativeZh: '本场戏将水疗呈现为一种温和的日常养生仪式——是人们主动为自己的健康负责、把调理融入生活方式的一部分，而非被动等待疾病到来。德国进口精油与矿物浴盐在温水中慢慢化开，细密气泡包裹双足与全身，帮助身心放松。暖意由脊柱与四肢深处透出，引出温润的「珍珠汗」，把体内寒湿轻轻排散；出水后身体仍持续温热片刻，越泡越精神而非疲惫。四季泡脚各有讲究：春升阳固脱、夏祛暑湿、秋肺润肠濡、冬丹田温灼。全程仅以「调理、舒缓、温通、放松、居家养生」的方式呈现——辅助身体回到自然平衡状态，绝不作任何医学上的承诺或暗示。',
+
+    // ========== 健康观念背书库（源自张大春《健康观念治疗》、黄帝内经等；
+    //   已做合规改写：调理不治疗、不作功效承诺、不替代医学） ==========
+    healthKnowledge: {
+      coreIdea: '健康不是治出来的，是养出来的。把治病的钱花在养生上，把去医院的路拦在厨房门口——主动调理、改善生活方式、让身体回到自然平衡态。',
+      coreIdeaEn: 'Health is not cured, it is cultivated. Invest what would have gone to hospital bills into daily self-care instead — bring the path to the hospital back to the kitchen door by adjusting lifestyle early.',
+      threeDoors: '健康三道门——第一道门：西医救死扶伤、治急症，不可替代（踩刹车）；第二道门：健康行业辅助调理、改善血液环境（踩油门+刹车并行）；第三道门：个人日常饮食起居调理、把生病拦在去医院的路上（只踩油门）。',
+      threeDoorsEn: 'Three doors of health — door one: Western medicine saves lives in emergencies (the brake); door two: the wellness industry supports circulation, blood quality and lifestyle (brake plus accelerator together); door three: the individual keeps daily rhythms of diet, rest and conditioning so illness never starts (accelerator only).',
+      cureVsCondition: '治是医生的事——手术、消炎、扩张血管，处理的是「结果」；调是健康行业的事——清理血液、改善循环、排出寒湿，处理的是「原因」。谁管果没结果，谁管因能去根。',
+      cureVsConditionEn: 'Treating is the doctor\'s job — surgery, anti-inflammation, dilating vessels — handling the visible result. Conditioning is the wellness industry\'s job — clearing the blood, improving circulation, releasing cold and dampness — handling the root cause. Managing only the result never ends; managing the cause removes the root.',
+      elevenFish: '五脏六腑好比 11 条鱼，鱼养得好不好由水质决定，水质就是血液。给病鱼撒药、扔掉病鱼，都不解决水质问题；真正有效的是「换水」——清理血液、改善循环，五脏六腑的环境自然变好。',
+      elevenFishEn: 'The internal organs are like 11 fish in a pond. Whether the fish thrive depends on the water quality — and that water is the blood. Sprinkling medicine on a sick fish or removing the sick fish does not fix the water. What works is changing the water — clearing the blood and improving circulation so the whole internal environment recovers.',
+      temperature: '寒凉是百病之源——冷饮、空调、寒凉食物导致血管变窄、循环变差、毒素堆积。提高温度（泡脚、热水浴、温通经络）能协助排出寒湿、改善循环。冬吃萝卜夏吃姜，厨房门口把好关。',
+      temperatureEn: 'Cold is the seed of most chronic issues — iced drinks, air conditioning and cold foods narrow the vessels, slow circulation and trap waste. Raising the temperature (foot bath, warm soak, meridian warming) helps release cold and dampness and restores flow. Keep the kitchen door well-guarded.',
+      causeAndEffect: '所有疾病都有「因」——错误生活习惯（熬夜、寒凉、情绪郁结、久坐不动）；不解决因就会反复发作、转移、扩散。找因者内观自悟自度——不要恐惧果，要害怕因。',
+      causeAndEffectEn: 'Every condition has a cause — wrong lifestyle habits (late nights, cold food, suppressed emotion, long sitting). Without changing the cause, the result keeps returning or shows up somewhere new. Look inward for the cause rather than fear the result.',
+      huangDi: '黄帝内经有云：「上古之人，春秋皆度百岁而动作不衰」。气血不足时，身体先保躯干后舍四肢——手脚冰凉、关节不灵便，是身体发出的早期信号，提示我们要早早调理、改善循环。',
+      huangDiEn: 'The Yellow Emperor\'s Classic of Internal Medicine notes that the people of high antiquity lived past a hundred with steady movement. When qi and blood are insufficient, the body protects the trunk first and lets the limbs go cold — cold hands and feet are an early signal to begin conditioning and improve circulation early.',
+      warningSignals: '身体的五大求救信号——肾脏：脚肿眼肿；肝脏：脸色发黑；大脑：突然头晕；血脂：黄色瘤、掌纹改变、耳褶；早衰：头发稀疏、体形发胖、性欲下降。这些都是身体在提醒我们——该改变生活方式、加强日常调理。',
+      warningSignalsEn: 'Five body alarm signals — kidney: swollen feet and eyes; liver: darkened face; brain: sudden dizziness; blood lipids: xanthomas, changed palm creases, ear creases; premature aging: thinning hair, weight gain, reduced vitality. The body is reminding us to change habits and reinforce daily conditioning.',
+      boundaries: '调理 ≠ 治疗。调理是辅助改善生活方式的一部分，是日常养生、协助身体回到平衡态。任何急重症（胸痛、呕血、意识丧失）必须立即就医；慢性不适应在专业医师指导下配合日常调理；纯物理疗法对正常人群无副作用、无伤害，但孕妇、儿童、重大疾病者需在医师指导下使用；调理期间身体可能出现的暖意、放松、困倦、排汗等现象，是身体自我调整的信号，不必恐惧。',
+      boundariesEn: 'Conditioning is not treatment. Conditioning is part of a self-care lifestyle that supports the body\'s natural balance. Acute symptoms (chest pain, vomiting blood, loss of consciousness) require immediate medical care; chronic discomforts should combine professional guidance with daily conditioning. Pure physical therapy has no side effects for healthy adults — but pregnant women, children and people with serious illness should use it under medical supervision. Sensations during conditioning — warmth, relaxation, sleepiness, gentle sweat — are normal signs of the body rebalancing, not a cause for alarm.'
+    },
+
+    // ========== 调理方向与好转反应（合规措辞） ==========
+    conditioningPoints: [
+      '温通足底经络',
+      '协助下肢气血运行',
+      '促进身体放松与舒缓',
+      '暖意由脊柱与四肢深处透出',
+      '引出温润的「珍珠汗」、协助排出寒湿',
+      '出水后身体仍持续温热片刻',
+      '四季不同侧重——春升阳、夏祛湿、秋润肺、冬温丹田',
+      '可与德国进口精油、矿物浴盐搭配增强体感',
+      '居家场景容易坚持、家人可共用',
+      '调理期间身体可能出现暖意、放松、困倦、轻微排汗——这是身体自我调整的正常现象，不必恐惧',
+      '调理后注意保暖、适量饮水、避免立即吹冷风'
+    ],
+
+    // ========== 生活方式建议（饮食/起居/情绪/运动） ==========
+    lifestyleTips: {
+      diet: [
+        '冬吃萝卜夏吃姜，少吃冰镇冷饮',
+        '少喝冰啤酒、冰咖啡，常温饮用更护肠胃',
+        '少吃生冷寒凉食物（冰激凌、生鱼片、寒性水果过量）',
+        '彩虹饮食：蔬菜水果多样化，补充蛋白质与微量元素',
+        '定时定量进食、不暴饮暴食'
+      ],
+      rest: [
+        '不要长时间吹空调，尤其睡觉时',
+        '晚上泡脚或热水浴有助改善循环',
+        '保证 7-8 小时睡眠、不熬夜',
+        '注意颈部、腰部、足部保暖'
+      ],
+      emotion: [
+        '情绪郁结易导致气滞血瘀，保持心情舒畅',
+        '适度宣泄压力、与家人朋友多沟通',
+        '家庭关系直接影响身心健康'
+      ],
+      exercise: [
+        '每天 30 分钟有氧运动（快走、慢跑、游泳、太极）',
+        '久坐每隔 1 小时起身活动',
+        '拉伸、瑜伽有助改善循环'
+      ]
+    }
   }
 };
 
@@ -1083,6 +1148,11 @@ function buildContext(formData) {
     industryNarrative: industryData.industryNarrative || '',
     industryNarrativeZh: industryData.industryNarrativeZh || '',
 
+    // 健康观念背书库（仅 hydro 行业存在；千问优化器与场景提示词可引用）
+    healthKnowledge: industryData.healthKnowledge || null,
+    conditioningPoints: industryData.conditioningPoints || [],
+    lifestyleTips: industryData.lifestyleTips || null,
+
     // 风格信息
     style: formData.style,
     styleKeywords: stylePreset.keywords,
@@ -1403,7 +1473,7 @@ PRODUCT_FLOW_STEPS.reaction = {
   voiceover: true,
   directorNote: '科普"调理期间的好转反应"：身体自我调整时可能出现的温暖、放松、困倦、排寒等正常现象。合规铁律：绝不宣称治疗/疗效，仅为温和居家养生体验，如有不适请咨询专业人士。',
   generate(ctx) {
-    const vo = ctx.voiceoverText || 'As the body gently rebalances, you may notice small signs of adjustment — a warm flush, a long sigh of release, a moment of drowsiness. These are the body tending to itself. Not a treatment, not a promise — just your body finding its rhythm again.';
+    const vo = ctx.voiceoverText || 'As the body gently rebalances, you may notice small signs of adjustment — a warm flush, a long sigh of release, a moment of drowsiness. These are the body tending to itself — just your body finding its rhythm again, never a promise of results.';
     return {
       visual: `[Shot 1] ${ctx.styleKeywords}, a calm close-up shot shows a person during a home wellness session — a gentle sheen of warmth on the skin, a relaxed exhale, perhaps a moment of drowsiness as the body adjusts and lets go. ${ctx.cameraMovement}. Soft, reassuring light. ${ctx.colorGrading}. The narrator (S1) says in an off-screen voiceover with a gentle, informative tone: <d>[English] ${vo}</d> while the on-screen person's lips remain closed.`,
       soundscape: `A slow, even breath, the faint trickle of water, and a hushed, calming room tone.`,
