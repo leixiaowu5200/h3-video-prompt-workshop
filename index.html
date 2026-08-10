@@ -209,10 +209,6 @@
         <!-- 操作按钮栏（移到完整提示词上方，无需滚动到底部即可触发） -->
         <div class="storyboard-header">
           <div class="export-buttons">
-            <div class="lang-toggle" id="langToggle" title="切换提示词语言">
-              <button data-lang="zh">中文</button>
-              <button data-lang="en">English</button>
-            </div>
             <button class="btn-export btn-qwen" id="qwenBtn" title="✨ 用通义千问把中文提示词润色为地道英文 H3 提示词">✨ 优化提示词</button>
             <span class="opt-count" id="optCount"></span>
             <button class="btn-export" id="copyAllBtn">📋 复制全部</button>
@@ -248,9 +244,13 @@
           </div>
         </div>
 
-        <!-- 分镜头部（标题放在完整提示词下方，紧贴分镜卡片） -->
+        <!-- 分镜头部（标题 + 语言切换，紧贴完整提示词下沿） -->
         <div class="storyboard-header storyboard-header--shots">
           <h2>分镜脚本 <span class="count" id="sceneCount">0 个场景</span></h2>
+          <div class="lang-toggle" id="langToggle" title="切换分镜提示词语言（仅影响下方各镜头卡片）">
+            <button data-lang="zh">中文</button>
+            <button data-lang="en">English</button>
+          </div>
         </div>
 
         <!-- 场景列表 -->

@@ -217,7 +217,14 @@ function bindEvents() {
   });
 
   // 通义千问优化按钮（key 已内嵌，浏览器直连 DashScope，无需设置）
-  document.getElementById('qwenBtn').addEventListener('click', openOptimizeDialog);
+  document.getElementById('qwenBtn').addEventListener('click', () => {
+    try {
+      openOptimizeDialog();
+    } catch(e) {
+      console.error('[H3] 打开优化弹窗失败:', e);
+      showToast('打开优化弹窗失败：' + (e.message || '未知错误'), 'warn');
+    }
+  });
   // 优化方向弹窗
   document.getElementById('optDialogClose').addEventListener('click', closeOptimizeDialog);
   document.getElementById('optDialogCancel').addEventListener('click', closeOptimizeDialog);
@@ -250,17 +257,22 @@ function bindEvents() {
 
   // 主动收藏（保存到历史）
   document.getElementById('saveHistoryBtn').addEventListener('click', () => {
-    if (!state.scenes || !state.scenes.length) {
-      showToast('请先生成提示词再收藏', 'warn');
-      return;
+    try {
+      if (!state.scenes || !state.scenes.length) {
+        showToast('请先生成提示词再收藏', 'warn');
+        return;
+      }
+      addHistory({
+        id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        time: new Date().toISOString(),
+        formData: state.formData,
+        scenes: state.scenes
+      });
+      showToast('✅ 已收藏，可在 📚历史 查看');
+    } catch(e) {
+      console.error('[H3] 收藏失败:', e);
+      showToast('收藏失败：' + (e.message || '未知错误'), 'warn');
     }
-    addHistory({
-      id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-      time: new Date().toISOString(),
-      formData: state.formData,
-      scenes: state.scenes
-    });
-    showToast('✅ 已收藏，可在 📚历史 查看');
   });
 
   // 历史记录
@@ -432,12 +444,17 @@ function handleGenerate() {
     btn.classList.remove('loading');
     btn.querySelector('span').textContent = '重新生成';
     // 自动保存为一条历史记录
-    addHistory({
-      id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-      time: new Date().toISOString(),
-      formData: formData,
-      scenes: state.scenes
-    });
+    try {
+      addHistory({
+        id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        time: new Date().toISOString(),
+        formData: formData,
+        scenes: state.scenes
+      });
+    } catch(e) {
+      console.error('[H3] 自动保存历史失败:', e);
+      // 不阻断主流程，静默失败
+    }
     showToast('分镜脚本生成完成！已自动保存到历史（也可点 📌收藏 手动保存）');
   }, 600);
 }
@@ -678,7 +695,12 @@ function escapeHtml(text) {
 }
 
 // ========== 启动 ==========
-init();
+try {
+  init();
+} catch(e) {
+  console.error('[H3] 初始化失败:', e);
+  alert('H3 工坊初始化失败，请按 F12 打开控制台查看错误信息。');
+}
 
 // ========== 通义千问 API（直接浏览器→DashScope） ==========
 // 阿里云百炼 DashScope 的 OpenAI 兼容端点开放 CORS（access-control-allow-origin: *），
@@ -887,29 +909,37 @@ function setHistory(list) {
 }
 
 function addHistory(record) {
-  const list = getHistory();
-  // 去掉循环引用：deep copy 后只保留需要的字段
-  const safe = {
-    id: record.id,
-    time: record.time,
-    formData: {
-      videoType: record.formData.videoType,
-      industry: record.formData.industry,
-      brandName: record.formData.brandName,
-      style: record.formData.style,
-      ratio: record.formData.ratio,
-      duration: record.formData.duration,
-      coreMessage: record.formData.coreMessage,
-      targetAudience: record.formData.targetAudience,
-      genMode: record.formData.genMode,
-      referenceImages: record.formData.referenceImages,
-      dialogue: record.formData.dialogue
-    },
-    scenes: record.scenes.map(s => ({ ...s }))
-  };
-  list.unshift(safe);
-  if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
-  setHistory(list);
+  try {
+    const list = getHistory();
+    // 去掉循环引用：deep copy 后只保留需要的字段
+    const safe = {
+      id: record.id,
+      time: record.time,
+      formData: {
+        videoType: record.formData.videoType,
+        industry: record.formData.industry,
+        brandName: record.formData.brandName,
+        style: record.formData.style,
+        ratio: record.formData.ratio,
+        duration: record.formData.duration,
+        coreMessage: record.formData.coreMessage,
+        targetAudience: record.formData.targetAudience,
+        genMode: record.formData.genMode,
+        referenceImages: record.formData.referenceImages,
+        dialogue: record.formData.dialogue
+      },
+      scenes: (record.scenes || []).map(s => {
+        try { return { ...s }; }
+        catch(e) { return { name: s.name, nameEn: s.nameEn }; }
+      })
+    };
+    list.unshift(safe);
+    if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
+    setHistory(list);
+  } catch(e) {
+    console.error('[H3] addHistory 失败:', e);
+    throw e; // 向上抛出，让调用方显示提示
+  }
 }
 
 function removeHistory(id) {
@@ -922,8 +952,13 @@ function clearHistory() {
 }
 
 function openHistory() {
-  renderHistoryList();
-  document.getElementById('historyOverlay').classList.add('show');
+  try {
+    renderHistoryList();
+    document.getElementById('historyOverlay').classList.add('show');
+  } catch(e) {
+    console.error('[H3] 打开历史失败:', e);
+    showToast('打开历史失败：' + (e.message || '未知错误'), 'warn');
+  }
 }
 
 function closeHistory() {
@@ -950,6 +985,7 @@ function getIndustryName(key) {
 
 function renderHistoryList() {
   const list = getHistory();
+  console.log('[H3] 历史记录数:', list.length);
   const wrap = document.getElementById('historyList');
   if (!list.length) {
     wrap.innerHTML = '<div class="history-empty">📭 暂无历史记录<br><span>生成提示词后会自动保存，或点操作栏的 📌收藏 主动保存</span></div>';
@@ -1030,15 +1066,4 @@ function loadHistoryRecord(id) {
   // 滚到顶部看效果
   window.scrollTo({ top: 0, behavior: 'smooth' });
   showToast('已加载历史记录：' + ((rec.formData && rec.formData.brandName) || '未命名项目'));
-}
-
-// HTML 转义，防止用户输入的主题/标题里出现 < > & 破坏弹窗
-function escapeHtml(s) {
-  if (s === undefined || s === null) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }

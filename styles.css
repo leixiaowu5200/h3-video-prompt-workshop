@@ -551,9 +551,9 @@ body::before {
   gap: 12px;
 }
 
-/* 仅含 h2 的分镜标题，紧贴完整提示词下沿 */
+/* 仅含 h2 + 语言切换的分镜标题，紧贴完整提示词下沿 */
 .storyboard-header--shots {
-  justify-content: flex-start;
+  justify-content: space-between;
   margin-top: 20px;
   margin-bottom: 14px;
 }
