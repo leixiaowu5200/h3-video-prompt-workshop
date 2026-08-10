@@ -694,6 +694,15 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// ========== 通义千问 API 配置 + 优化计数 Key（必须在 init() 之前声明，避免 TDZ） ==========
+const QWEN_CONFIG = {
+  apiKey: 'sk-ws-H.ERYMXDH.iPtV.MEUCIQDU8gDQ5vzO68S-mNeQTrciFNeSr5L1fe4oLan1VCpvhwIgYMgRTYzt3gsUVB9KTQfAY4FOAJUjSawUjYJg9VZHTNg',
+  model: 'qwen-plus',
+  endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+};
+
+const OPTIMIZE_COUNT_KEY = 'h3_optimize_count';
+
 // ========== 启动 ==========
 try {
   init();
@@ -702,16 +711,7 @@ try {
   alert('H3 工坊初始化失败，请按 F12 打开控制台查看错误信息。');
 }
 
-// ========== 通义千问 API（直接浏览器→DashScope） ==========
-// 阿里云百炼 DashScope 的 OpenAI 兼容端点开放 CORS（access-control-allow-origin: *），
-// 因此无需任何后端代理，把 key 内嵌到静态页里就行。
-// 注意：任何人查看页面源码都能拿到这个 key，请把它视作"团队共享 token"。
-
-const QWEN_CONFIG = {
-  apiKey: 'sk-ws-H.ERYMXDH.iPtV.MEUCIQDU8gDQ5vzO68S-mNeQTrciFNeSr5L1fe4oLan1VCpvhwIgYMgRTYzt3gsUVB9KTQfAY4FOAJUjSawUjYJg9VZHTNg',
-  model: 'qwen-plus',
-  endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
-};
+// ========== 通义千问 API 函数（直接浏览器→DashScope） ==========
 
 async function callQwen(system, user) {
   const resp = await fetch(QWEN_CONFIG.endpoint, {
@@ -759,8 +759,7 @@ function parseH3Reply(text) {
   return { visual: visual || '', soundscape: soundscape || '', music: music || '' };
 }
 
-// ========== 优化提示词方向弹窗 + 软计数 ==========
-const OPTIMIZE_COUNT_KEY = 'h3_optimize_count';
+// ========== 优化提示词方向弹窗 + 软计数（OPTIMIZE_COUNT_KEY 已在文件顶部声明） ==========
 
 function getOptimizeCount() {
   const n = parseInt(localStorage.getItem(OPTIMIZE_COUNT_KEY) || '0', 10);
