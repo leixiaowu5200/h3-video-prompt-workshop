@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>H3 AI 视频提示词工坊 - MiniMax H3 宣传片与广告提示词生成器</title>
+  <meta name="description" content="基于 MiniMax H3 开源模型，专业生成企业宣传片与广告的 AI 视频提示词及分镜脚本">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23d4a44c'/%3E%3Ctext x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='%230a0a0f' font-family='sans-serif'%3EH3%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="header-left">
+        <div class="logo-badge">H3</div>
+        <div class="header-title">
+          <h1>H3 AI 视频提示词工坊</h1>
+          <div class="subtitle">MiniMax H3 开源模型 · 专业宣传片与广告提示词及分镜生成</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="theme-wrap">
+          <button class="header-btn" id="themeBtn" title="切换主题" aria-label="切换主题" aria-haspopup="true">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="theme-panel" id="themePanel" role="menu" aria-label="选择主题">
+            <div class="theme-panel-title">选择主题配色</div>
+            <div class="theme-list" id="themeList"></div>
+          </div>
+        </div>
+        <a class="header-link" href="https://www.minimax.io/news/minimax-h3-open-source" target="_blank" rel="noopener">H3 开源 ↗</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+  <main>
+    <!-- 左侧配置面板 -->
+    <aside class="config-panel">
+      <div class="panel-title">项目配置</div>
+
+      <!-- 视频类型 -->
+      <div class="form-group">
+        <label>视频类型 <span class="hint">选择宣传片类型</span></label>
+        <div class="video-type-grid" id="videoTypeGrid"></div>
+      </div>
+
+      <!-- 行业领域 -->
+      <div class="form-group">
+        <label>行业领域</label>
+        <select id="industry">
+          <option value="">请选择行业</option>
+        </select>
+      </div>
+
+      <!-- 企业/品牌名称 -->
+      <div class="form-group">
+        <label>企业/品牌名称 <span class="hint">将出现在画面文字和画外音中</span></label>
+        <input type="text" id="brandName" placeholder="例如：星河科技">
+      </div>
+
+      <!-- 产品/服务描述 -->
+      <div class="form-group">
+        <label>产品/服务描述 <span class="hint">简要描述核心产品或服务</span></label>
+        <textarea id="productDesc" placeholder="例如：企业级AI智能平台，提供数据分析、智能决策和自动化运营解决方案"></textarea>
+      </div>
+
+      <!-- 核心Slogan -->
+      <div class="form-group">
+        <label>核心 Slogan <span class="hint">品牌口号</span></label>
+        <input type="text" id="slogan" placeholder="例如：智联未来，共创无限">
+      </div>
+
+      <!-- 视觉风格 -->
+      <div class="form-group">
+        <label>视觉风格</label>
+        <div class="style-grid" id="styleGrid"></div>
+      </div>
+
+      <!-- 画幅比例 -->
+      <div class="form-group">
+        <label>画幅比例</label>
+        <div class="ratio-grid" id="ratioGrid"></div>
+      </div>
+
+      <!-- 目标总时长 -->
+      <div class="form-group">
+        <label>目标总时长（秒）<span class="hint">整片时长，将均分到各镜头并生成时间码</span></label>
+        <input type="number" id="totalDuration" min="4" max="600" step="1" value="40" placeholder="例如：15 / 40">
+      </div>
+
+      <!-- 高级选项 -->
+      <div class="advanced-toggle" id="advancedToggle">
+        <span class="arrow">▶</span>
+        <span>高级选项（自定义文案）</span>
+      </div>
+      <div class="advanced-section" id="advancedSection">
+        <div class="form-group">
+          <label>画外音文案 <span class="hint">留空则使用默认文案</span></label>
+          <textarea id="voiceoverText" placeholder="自定义每个场景的画外音内容（可选）"></textarea>
+        </div>
+        <div class="form-group">
+          <label>目标受众</label>
+          <input type="text" id="audience" placeholder="例如：25-40岁都市白领">
+        </div>
+        <div class="form-group">
+          <label>行动召唤文案 (CTA)</label>
+          <input type="text" id="ctaText" placeholder="例如：立即购买 / 立即报名">
+        </div>
+        <div class="form-group">
+          <label>卖点1 / 活动亮点1</label>
+          <input type="text" id="sellingPoint1" placeholder="例如：AI智能分析">
+        </div>
+        <div class="form-group">
+          <label>卖点2 / 活动亮点2</label>
+          <input type="text" id="sellingPoint2" placeholder="例如：一键部署">
+        </div>
+        <div class="form-group">
+          <label>卖点3 / 活动亮点3</label>
+          <input type="text" id="sellingPoint3" placeholder="例如：7x24小时服务">
+        </div>
+        <div class="form-group">
+          <label>活动名称（活动/招聘类型）</label>
+          <input type="text" id="eventName" placeholder="例如：2026星河科技峰会">
+        </div>
+        <div class="form-group">
+          <label>活动日期</label>
+          <input type="text" id="eventDate" placeholder="例如：2026年10月15-17日">
+        </div>
+        <div class="form-group">
+          <label>活动地点</label>
+          <input type="text" id="eventLocation" placeholder="例如：上海国际会展中心">
+        </div>
+      </div>
+
+      <!-- 生成按钮 -->
+      <button class="btn-generate" id="generateBtn">
+        <span>生成提示词与分镜</span>
+      </button>
+    </aside>
+
+    <!-- 右侧分镜展示 -->
+    <section class="storyboard-section" id="storyboardSection">
+      <!-- 空状态 -->
+      <div class="empty-state" id="emptyState">
+        <div class="icon">🎬</div>
+        <h2>开始创建你的宣传片分镜</h2>
+        <p>在左侧配置项目信息，选择视频类型和风格，点击生成即可获得符合 MiniMax H3 提示词规范的专业分镜脚本。每个场景包含完整的 H3 提示词，可直接用于视频生成。</p>
+        <div class="features">
+          <div class="feature">
+            <div class="f-icon">🎭</div>
+            <div class="f-title">6种视频类型</div>
+            <div class="f-desc">企业宣传/产品广告/品牌形象/电商/活动/招聘</div>
+          </div>
+          <div class="feature">
+            <div class="f-icon">🎨</div>
+            <div class="f-title">10种视觉风格</div>
+            <div class="f-desc">电影质感/科技未来/搞笑喜剧/剧情反转等</div>
+          </div>
+          <div class="feature">
+            <div class="f-icon">📋</div>
+            <div class="f-title">H3规范提示词</div>
+            <div class="f-desc">Full-Reference 六段式全参考格式，可直接使用</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分镜内容（动态生成） -->
+      <div id="storyboardContent" style="display:none;">
+        <!-- 项目摘要 -->
+        <div class="project-summary" id="projectSummary"></div>
+
+        <!-- Full-Reference 整片六段式提示词 -->
+        <div class="fullref-section" id="fullRefSection">
+          <div class="fullref-head">
+            <div class="fullref-title">🎯 Full-Reference 全参考模式 · 整片六段式提示词</div>
+            <button class="btn-export" id="copyFullRefBtn">📋 复制整片提示词</button>
+          </div>
+          <div class="fullref-meta" id="fullRefMeta"></div>
+          <pre class="fullref-content" id="fullRefContent"></pre>
+        </div>
+
+        <!-- 分镜头部 -->
+        <div class="storyboard-header">
+          <h2>分镜脚本 <span class="count" id="sceneCount">0 个场景</span></h2>
+          <div class="export-buttons">
+            <div class="lang-toggle" id="langToggle" title="切换提示词语言">
+              <button data-lang="zh">中文</button>
+              <button data-lang="en">English</button>
+            </div>
+            <button class="btn-export btn-qwen" id="qwenBtn" title="✨ 用通义千问把中文提示词润色为地道英文 H3 提示词">✨ 优化提示词</button>
+            <span class="opt-count" id="optCount"></span>
+            <button class="btn-export" id="copyAllBtn">📋 复制全部</button>
+            <button class="btn-export" id="exportWordBtn">📄 导出 WORD</button>
+            <button class="btn-export" id="historyBtn" title="查看历史生成记录（仅保存在当前浏览器）">📚 历史</button>
+            <button class="btn-export" id="printBtn">🖨️ 打印</button>
+          </div>
+        </div>
+
+        <!-- 场景列表 -->
+        <div id="sceneList"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- H3 知识面板 -->
+  <section class="h3-info-section">
+    <div class="h3-info-grid">
+      <div class="h3-info-card" data-card="ratio" tabindex="0" role="button" aria-expanded="false">
+        <div class="h3-info-icon">📐</div>
+        <div class="h3-info-title">画幅与分辨率</div>
+        <div class="h3-info-text">
+          <div class="h3-info-short">支持 21:9 / 16:9 / 4:3 / 1:1 / 3:4 / 9:16<br>默认 768p，可通过 H3-Regenerate-2K 升至 2K</div>
+          <div class="h3-info-detail">
+            <p><strong>6 种画幅：</strong>21:9（影院宽银幕）/ 16:9（标准横屏）/ 4:3（经典电视）/ 1:1（社交方形）/ 3:4（小红书竖屏）/ 9:16（抖音/快手全屏竖屏）</p>
+            <p><strong>分辨率档位：</strong>默认 768p；通过推理参数 <code>H3-Regenerate-2K</code> 可一键升档到 2K 超清（适合最终成片）</p>
+            <p><strong>选择建议：</strong>TVC/广告片首选 16:9，影院感选 21:9，抖音/快手/小红书必选 9:16 或 3:4，国际平台选 16:9 或 1:1</p>
+          </div>
+          <div class="h3-info-toggle">点击展开 ▾</div>
+        </div>
+      </div>
+
+      <div class="h3-info-card" data-card="duration" tabindex="0" role="button" aria-expanded="false">
+        <div class="h3-info-icon">⏱️</div>
+        <div class="h3-info-title">时长与帧率</div>
+        <div class="h3-info-text">
+          <div class="h3-info-short">单次生成 4–15 秒 · 支持目标总时长与时间码<br>24 FPS，32kHz 立体声原生音频</div>
+          <div class="h3-info-detail">
+            <p><strong>时长：</strong>单次调用生成 4–15 秒连续视频。设置「目标总时长」后，工具按镜头数均分秒数（末镜头补余数）。</p>
+            <p><strong>帧率：</strong>24 FPS 电影级标准，画面运动流畅自然</p>
+            <p><strong>音频：</strong>32kHz 立体声原生生成，画面中的环境音、对白、音乐一并输出，无需后期配音</p>
+            <p><strong>时间码：</strong>生成后每个镜头都标注起始时间码（如 [Shot 2] At 00:04.000,），后期按此拼接即为一条连续成片。</p>
+            <p><strong>拼接技巧：</strong>每个 [Shot N] 是独立成片，后期用剪辑软件（如剪映/PR）按时间码顺序拼接即可，场景间加 0.2–0.5 秒转场更自然</p>
+            <p><strong>⚠️ H3 下限：</strong>单段最少 4 秒。若目标总时长 / 镜头数 &lt; 4，建议提高总时长或减少镜头，或在剪辑中裁剪。</p>
+          </div>
+          <div class="h3-info-toggle">点击展开 ▾</div>
+        </div>
+      </div>
+
+      <div class="h3-info-card" data-card="format" tabindex="0" role="button" aria-expanded="false">
+        <div class="h3-info-icon">📝</div>
+        <div class="h3-info-title">六段式全参考格式</div>
+        <div class="h3-info-text">
+          <div class="h3-info-short">subject_definitions<br>summary · retention_analysis<br>detailed_description<br>overall_soundscape · non_diegetic_music</div>
+          <div class="h3-info-detail">
+            <p><strong>1. subject_definitions：</strong>定义本片复用的主体/产品/场景/风格（&lt;Subject 1&gt;、&lt;Subject 2&gt;…），说明来源与必须保持的特征。</p>
+            <p><strong>2. summary：</strong>首句以方括号任务类型开头（如 [reference generation]），概括整片、主体与镜头流程。</p>
+            <p><strong>3. retention_analysis：</strong>逐行说明每个参考标签在全片如何保留 / 迁移 / 复制（fully_preserved 等）。</p>
+            <p><strong>4. detailed_description：</strong>先定全片风格，再按 [Shot 1]、[Shot 2] At 00:04.000, … 顺序写各镜头构图、运镜、光影、动作与声音。</p>
+            <p><strong>5. overall_soundscape：</strong>全片环境声与物理动作声（不含已写在分镜里的对白）。</p>
+            <p><strong>6. non_diegetic_music：</strong>只有观众听到的配乐；无配乐写 N/A。</p>
+            <p><strong>⚠️ 硬性要求：</strong>六段顺序固定、缺一不可；不要把全参考格式降级成基础的 integrated_multimodal_description 三段格式。</p>
+          </div>
+          <div class="h3-info-toggle">点击展开 ▾</div>
+        </div>
+      </div>
+
+      <div class="h3-info-card" data-card="usage" tabindex="0" role="button" aria-expanded="false">
+        <div class="h3-info-icon">🎬</div>
+        <div class="h3-info-title">使用方式</div>
+        <div class="h3-info-text">
+          <div class="h3-info-short">整片输出一条 Full-Reference 六段式提示词<br>逐镜头生成后按时间码拼接成片</div>
+          <div class="h3-info-detail">
+            <p><strong>标准流程：</strong></p>
+            <p>① 配置左侧项目信息（主题/行业/类型/风格/画幅/目标总时长）</p>
+            <p>② 点击"🎬 生成"获得整片六段式提示词（含各镜头时间码）</p>
+            <p>③ 可选：点击"✨ 优化提示词"用通义千问润色英文</p>
+            <p>④ 复制整片六段式提示词，粘贴到 H3 逐 [Shot N] 生成</p>
+            <p>⑤ 用剪映/PR 按时间码拼接、加转场、调色、出片</p>
+            <p><strong>高级用法：</strong>把同主题的不同分镜（节日版/产品版/招聘版）批量生成，沉淀为团队的"提示词模板库"</p>
+          </div>
+          <div class="h3-info-toggle">点击展开 ▾</div>
+        </div>
+      </div>
+    </div>
+    <div class="h3-footer">
+      <p>基于 <a href="https://www.minimax.io/news/minimax-h3-open-source" target="_blank" rel="noopener">MiniMax H3 开源模型</a> 官方提示词规范构建 · 遵循 H3 Prompt Writing Guide Full-Reference 六段式全参考格式</p>
+      <p class="h3-footer-note">本工具生成的提示词可直接用于 H3-Base（T2VA/FL2VA）推理 · 建议配合 H3-Context-IR 使用以获得最佳效果</p>
+    </div>
+  </section>
+  </div><!-- /app-shell -->
+
+  <!-- 回到顶部按钮 -->
+  <button class="back-to-top" id="backToTopBtn" title="回到顶部" aria-label="回到顶部">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 14V4M9 4L4 9M9 4L14 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="back-to-top-tip">回到顶部</span>
+  </button>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span>✓</span>
+    <span id="toastText">已复制到剪贴板</span>
+  </div>
+
+  <!-- 优化提示词方向弹窗 -->
+  <div class="modal-overlay" id="optDialogOverlay">
+    <div class="modal modal-opt">
+      <div class="modal-header">
+        <h3>✨ 优化提示词方向</h3>
+        <button class="modal-close" id="optDialogClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="opt-tip">通义千问会把中文提示词润色成更地道的英文 H3 提示词。可填写/选择优化方向（可留空，使用默认优化）。</p>
+        <div class="opt-chips" id="optChips">
+          <button type="button" class="opt-chip" data-dir="更电影感、更有质感">更电影感</button>
+          <button type="button" class="opt-chip" data-dir="更简洁、节奏更快">更简洁</button>
+          <button type="button" class="opt-chip" data-dir="更强调产品卖点和核心利益">强调卖点</button>
+          <button type="button" class="opt-chip" data-dir="更活泼、适合抖音/短视频平台">短视频节奏</button>
+          <button type="button" class="opt-chip" data-dir="更高级、奢侈品调性">高级感</button>
+          <button type="button" class="opt-chip" data-dir="更温暖、有人情味">温暖感</button>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label>优化方向（可选，可自由补充）</label>
+          <textarea id="optDirection" rows="3" placeholder="例如：更电影感、强调产品卖点、适合抖音节奏、突出品牌年轻化……"></textarea>
+        </div>
+        <div class="opt-meta">
+          <span id="optCountInline">已优化 0 次</span>
+          <span class="opt-note">免费额度充足，放心使用</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="optDialogCancel">取消</button>
+        <button class="btn-export btn-qwen" id="optDialogStart">🚀 开始优化</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Word 导出弹窗 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal modal-word">
+      <div class="modal-header">
+        <h3>Word 导出预览</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="wordPreview" style="width:100%;height:60vh;border:1px solid var(--border-subtle);border-radius:8px;background:#fff;"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-export" id="copyWordBtn">📋 复制 HTML</button>
+        <button class="btn-export" id="downloadWordBtn">💾 下载 .doc 文件（Word/WPS 直接打开）</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 历史记录抽屉 -->
+  <div class="modal-overlay" id="historyOverlay">
+    <div class="modal modal-history">
+      <div class="modal-header">
+        <h3>📚 生成历史</h3>
+        <button class="modal-close" id="historyClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="history-tip">
+          <strong>💡 数据保存在当前浏览器</strong>（localStorage）。换浏览器、清缓存、卸载浏览器都会导致记录丢失，请重要项目及时「导出 WORD」备份。
+        </div>
+        <div class="history-list" id="historyList">
+          <!-- 动态渲染 -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="historyClear">🗑 清空全部</button>
+        <button class="btn-export" id="historyClose2">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通义千问 API 设置弹窗（已废弃：key 内嵌，浏览器直连 DashScope） -->
+
+  <script src="data.js"></script>
+  <script src="zhdata.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
