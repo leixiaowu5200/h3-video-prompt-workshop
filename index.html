@@ -118,6 +118,13 @@
         <input type="number" id="totalDuration" min="4" max="600" step="1" value="40" placeholder="例如：15 / 40">
       </div>
 
+      <!-- 台词 / 配音脚本 -->
+      <div class="form-group">
+        <label>台词 / 配音脚本 <span class="hint">决定视频"说什么"，逐镜头朗读，务必写清楚才不会糊成乱语</span></label>
+        <textarea id="dialogue" rows="4" placeholder="每行一句，对应一个镜头（按顺序）。例如：&#10;第一句台词写在这里&#10;第二句台词写在这里&#10;留空的镜头不说话"></textarea>
+        <div class="field-tip">提示：海螺 H3 会按你写的原文字朗读，写越清楚发音越准。不填则用默认画外音。</div>
+      </div>
+
       <!-- 高级选项 -->
       <div class="advanced-toggle" id="advancedToggle">
         <span class="arrow">▶</span>

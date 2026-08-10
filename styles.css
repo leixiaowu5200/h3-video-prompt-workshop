@@ -840,6 +840,32 @@ body::before {
 .prompt-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* 完整提示词区块 */
+.dialogue-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 4px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(212,164,76,0.12), rgba(212,164,76,0.04));
+  border: 1px solid rgba(212,164,76,0.35);
+}
+.dialogue-box .label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  padding-top: 2px;
+}
+.dialogue-box .dialogue-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-weight: 500;
+  word-break: break-word;
+}
+
 .full-prompt {
   margin-top: 16px;
   padding-top: 16px;

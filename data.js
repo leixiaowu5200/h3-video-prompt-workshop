@@ -1067,6 +1067,11 @@ function buildContext(formData) {
     aspectRatio: formData.aspectRatio || '16:9',
     totalDuration: formData.totalDuration || 40,
 
+    // 台词 / 配音脚本（每行对应一个镜头，按顺序分配）
+    dialogueLines: (formData.dialogue || '')
+      .split('\n').map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; }),
+
     // 自定义文案
     voiceoverText: formData.voiceoverText || '',
     usageScenario: formData.usageScenario || '',
@@ -1309,14 +1314,16 @@ function generateStoryboard(formData) {
   const durations = distributeDurations(total, templates.length);
 
   return templates.map((scene, index) => {
-    // 为每个场景设置特定的相机运动和光影
+    // 为每个场景设置特定的相机运动和光影，并分配对应镜头的台词
     const sceneCtx = {
       ...ctx,
       cameraMovement: scene.cameraMovement,
-      lightingDesc: scene.lighting || ctx.lightingDesc
+      lightingDesc: scene.lighting || ctx.lightingDesc,
+      dialogueLine: ctx.dialogueLines[index] || ''
     };
     const data = generateScenePrompt(sceneCtx, scene);
     data.duration = durations[index]; // 应用均分后的目标时长
+    data.dialogueLine = sceneCtx.dialogueLine; // 透传台词，供 buildShotBlock 使用
     return data;
   });
 }
@@ -1339,17 +1346,79 @@ function fmtTimecode(totalSec) {
   return String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0') + '.000';
 }
 
-// 单个镜头在 detailed_description 中的段落（[Shot N] + 时间码 + 描述 + 结构化镜头信息）
+// ========== 镜头美学控制中文翻译（景别 / 运镜 / 光线） ==========
+const SHOT_TYPE_ZH = {
+  'medium shot': '中景', 'close-up shot': '特写', 'static shot': '固定镜头',
+  'medium close-up shot': '中近景', 'Establishing Wide': '大远景/建立镜头',
+  'Extreme Close-up': '大特写', 'Medium Shot': '中景', 'Tight Close-up': '紧凑特写',
+  'Wide-to-Hero': '全景转英雄镜头', 'Logo Lockup': 'Logo 定格'
+};
+const CAM_ZH = {
+  'The camera holds a static shot with a slight handheld shake': '固定机位略带手持晃动',
+  'The camera pushes in with small amplitude at slow speed': '缓慢小幅推进',
+  'The camera holds a static shot throughout': '全程固定机位',
+  'slow calm push-in': '缓慢平稳推进', 'slow zoom in': '缓慢推近',
+  'restless handheld': '不安定的手持跟拍', 'rapid snap-zoom': '快速急推',
+  'pull-back reveal': '拉远揭示', 'slow settle': '缓慢稳定'
+};
+const LIGHT_ZH = {
+  'slightly dim, muted lighting to convey frustration': '略暗沉闷',
+  'bright, motivational lighting': '明亮激励', 'soft, warm portrait lighting': '柔和暖调人像光',
+  'clean, bright lighting with gradient background': '干净明亮渐变背景光',
+  'soft naturalistic': '柔和自然光', 'single motivated light': '单一主光',
+  'shifting, uncertain': '游移不定', 'harsh, high-contrast': '硬调高反差',
+  'dramatic key-light flip': '戏剧性主光翻转', 'clean, confident': '干净自信'
+};
+
+// 当用户显式提供台词时，清掉模板里默认的 <d> 画外音片段，避免"双重发音/乱语"
+function cleanVisualForSpeech(body) {
+  let s = body || '';
+  s = s.replace(/<d>\[[^\]]*\][\s\S]*?<\/d>/g, '');                                   // 去掉 <d>[...]</d>
+  s = s.replace(/画外音（S1）[^，。：]*说道：/g, '');                                  // 中文引导语
+  s = s.replace(/，?画面中[^。]*嘴唇[^。]*。?/g, '');                                  // 残留嘴唇描述
+  s = s.replace(/The narrator \(S1\)[\s\S]*?(?:says|sounds|whispers|delivers|closes|continues|acknowledges|leads|states|narrates|speaks)[^.]*\./g, ''); // 英文引导语+台词
+  s = s.replace(/,\s*while the on-screen person[^.]*/g, '');                          // 英文嘴唇残留
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  s = s.replace(/^[\s，,：:]+/, '');
+  return s;
+}
+
+// 单个镜头在 detailed_description 中的段落（[Shot N] + 时间码 + 描述 + 美学控制 + 台词）
 // refNote：可选，图生视频时本镜头所用参考图备注（已带前导空格）
 function buildShotBlock(scene, index, startSec, lang, refNote) {
   const isZh = lang === 'zh';
+  const dialogueLine = scene.dialogueLine || '';
   let body = (isZh ? scene.visualZh : scene.visualEn) || '';
-  // 全局去掉模板自带的 [Shot N] / [镜头N] 前缀，避免嵌套（无论出现在开头还是中间）
+  // 全局去掉模板自带的 [Shot N] / [镜头N] 前缀，避免嵌套
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+  // 用户提供台词时，清掉模板默认 <d> 画外音，改为下方显式台词
+  if (dialogueLine) body = cleanVisualForSpeech(body);
+
   const tc = index === 0 ? '' : (fmtTimecode(startSec) + ', ');
   const marker = '[Shot ' + (index + 1) + '] ' + tc;
-  let out = marker + body + ' (Shot type: ' + scene.shotType + '; Camera: ' + scene.cameraMovement +
-    '; Lighting: ' + scene.lighting + '; Duration: ' + scene.duration + 's.)';
+
+  // 美学控制（仅当景别/运镜/光线均能翻译为中文时才显示，避免回退成英文造成中英混杂）
+  let ctrl = '';
+  if (isZh) {
+    const st = SHOT_TYPE_ZH[(scene.shotType || '').trim()] || '';
+    const cam = CAM_ZH[(scene.cameraMovement || '').trim()] || '';
+    const light = LIGHT_ZH[(scene.lighting || '').trim()] || '';
+    if (st && cam && light) {
+      ctrl = '（美学控制：景别·' + st + '；运镜·' + cam + '；光线·' + light + '）';
+    }
+  }
+
+  // 台词（显式、可读，避免海螺发音糊成乱语）
+  let dl = '';
+  if (dialogueLine) {
+    if (isZh) {
+      dl = ' 台词：「' + dialogueLine + '」（角色清晰说出，普通话，语速适中，口型与台词同步）';
+    } else {
+      dl = ' Spoken line: "' + dialogueLine + '" (clear speech, natural pace, lipsync).';
+    }
+  }
+
+  let out = marker + body + ctrl + dl;
   if (refNote) out += refNote;
   return out;
 }

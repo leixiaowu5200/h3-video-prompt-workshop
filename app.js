@@ -375,6 +375,7 @@ function collectFormData() {
     eventLocation: document.getElementById('eventLocation').value.trim(),
     genMode: state.genMode || 't2v',
     referenceImages: state.referenceImages || [],
+    dialogue: (document.getElementById('dialogue') ? document.getElementById('dialogue').value : '') || '',
     totalDuration: parseInt((document.getElementById('totalDuration') && document.getElementById('totalDuration').value), 10) || 40
   };
 }
@@ -531,9 +532,10 @@ function createSceneCard(scene, index, startSec) {
         <div class="tech-item"><div class="t-label">色彩</div><div class="t-value">${scene.colorGrading}</div></div>
         <div class="tech-item"><div class="t-label">画面文字</div><div class="t-value">${scene.textOverlay ? '有' : '无'}</div></div>
       </div>
+      ${scene.dialogueLine ? `<div class="dialogue-box"><span class="label">台词 / 配音</span><span class="dialogue-text">${escapeHtml(scene.dialogueLine)}</span></div>` : ''}
       <div class="prompt-section">
         <div class="prompt-label">
-          <span class="pname"><span class="dot" style="background:var(--accent)"></span>本镜头描述 [Shot ${index + 1}] ${langTag}（六段式 detailed_description 片段）</span>
+          <span class="pname"><span class="dot" style="background:var(--accent)"></span>直投提示词 [Shot ${index + 1}] ${langTag}（可直接粘贴到海螺 H3）</span>
           <button class="btn-copy" data-copy="${index}-shot">复制本镜头</button>
         </div>
         <div class="prompt-content">${escapeHtml(shotBlock)}</div>
@@ -877,7 +879,8 @@ function addHistory(record) {
       coreMessage: record.formData.coreMessage,
       targetAudience: record.formData.targetAudience,
       genMode: record.formData.genMode,
-      referenceImages: record.formData.referenceImages
+      referenceImages: record.formData.referenceImages,
+      dialogue: record.formData.dialogue
     },
     scenes: record.scenes.map(s => ({ ...s }))
   };
@@ -997,6 +1000,8 @@ function loadHistoryRecord(id) {
     renderIndustries();
     renderStyles();
     renderRatios();
+    const dlgEl = document.getElementById('dialogue');
+    if (dlgEl) dlgEl.value = rec.formData.dialogue || '';
   }
   renderStoryboard();
   // 滚到顶部看效果
