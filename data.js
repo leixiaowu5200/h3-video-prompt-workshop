@@ -968,7 +968,9 @@ function generateScenePrompt(ctx, scene) {
   const result = scene.generate(ctx);
 
   // 风格叙事DNA：搞笑/剧情反转等风格会在每场戏注入专属叙事 flavor
+  // （纯净版：未追加 flavor，供整片六段式只注入一次使用）
   let visualEn = result.visual;
+  const visualEnBase = result.visual;
   if (ctx.narrativeFlavor) {
     visualEn += ' ' + ctx.narrativeFlavor;
   }
@@ -979,12 +981,14 @@ function generateScenePrompt(ctx, scene) {
 
   // 中文版提示词（来自 zhdata.js，与英文一一对应）
   let visualZh = '';
+  let visualZhBase = '';
   let soundscapeZh = '';
   let musicZh = '';
   const zhTpl = (typeof ZH_SCENES !== 'undefined' && ZH_SCENES[ctx.videoType] && ZH_SCENES[ctx.videoType][scene.id])
     || (typeof ZH_TWIST_SCENES !== 'undefined' && ZH_TWIST_SCENES[scene.id]);
   if (zhTpl) {
     visualZh = zhTpl.visual(ctx);
+    visualZhBase = visualZh;
     soundscapeZh = zhTpl.soundscape(ctx);
     musicZh = zhTpl.music(ctx);
     if (ctx.narrativeFlavorZh) visualZh += ' ' + ctx.narrativeFlavorZh;
@@ -992,6 +996,7 @@ function generateScenePrompt(ctx, scene) {
   } else {
     // 兜底：没有中文模板时使用英文
     visualZh = visualEn;
+    visualZhBase = visualEnBase;
     soundscapeZh = result.soundscape;
     musicZh = result.music;
   }
@@ -1014,11 +1019,13 @@ function generateScenePrompt(ctx, scene) {
     voiceover: scene.voiceover,
     // 英文
     visualEn: visualEn,
+    visualEnBase: visualEnBase,
     soundscapeEn: result.soundscape,
     musicEn: result.music,
     promptEn: promptEn,
     // 中文
     visualZh: visualZh,
+    visualZhBase: visualZhBase,
     soundscapeZh: soundscapeZh,
     musicZh: musicZh,
     promptZh: promptZh,
@@ -1398,7 +1405,8 @@ function cleanVisualForSpeech(body) {
 function buildShotBlock(scene, index, startSec, lang, refNote) {
   const isZh = lang === 'zh';
   const dialogueLine = scene.dialogueLine || '';
-  let body = (isZh ? scene.visualZh : scene.visualEn) || '';
+  // 使用纯净版（未追加 per-shot flavor），避免整片六段式里风格/行业语境被每个镜头重复一遍
+  let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
   // 全局去掉模板自带的 [Shot N] / [镜头N] 前缀，避免嵌套
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
   // ★ 无论是否提供台词，始终清理 <d> 标签、英文括号、引导语等噪声
@@ -1471,6 +1479,10 @@ function buildFullReference(scenes, formData, lang) {
   const isZh = lang === 'zh';
   const vt = (typeof VIDEO_TYPES !== 'undefined' && VIDEO_TYPES[formData.videoType]) || { name: formData.videoType || 'video', nameEn: formData.videoType || 'video' };
   const st = (typeof STYLES !== 'undefined' && STYLES[formData.style]) || { name: formData.style || 'cinematic', nameEn: formData.style || 'cinematic' };
+  const industryData = (typeof INDUSTRIES !== 'undefined' && INDUSTRIES[formData.industry]) || null;
+  // 风格叙事DNA + 行业叙事DNA：整片只注入一次（置于 detailed_description 顶部），避免每个镜头重复
+  const globalZh = [st.narrativeFlavorZh, industryData && industryData.industryNarrativeZh].filter(Boolean).join(' ');
+  const globalEn = [st.narrativeFlavor, industryData && industryData.industryNarrative].filter(Boolean).join(' ');
   const brand = formData.brandName || 'YourBrand';
   const product = formData.productDesc || '';
   const slogan = formData.slogan || '';
@@ -1554,6 +1566,12 @@ function buildFullReference(scenes, formData, lang) {
     } else {
       dd += 'Throughout the video, strictly use the following reference images to keep subjects consistent: ' + refsEn + '.\n';
     }
+  }
+  // 风格叙事DNA + 行业叙事DNA（整片只写一次，统一作用于全片，避免每个镜头重复）
+  if (isZh) {
+    if (globalZh) dd += globalZh + '\n';
+  } else {
+    if (globalEn) dd += globalEn + '\n';
   }
   scenes.forEach((s, i) => {
     const refNote = buildRefNoteForShot(refImages, i, isZh);

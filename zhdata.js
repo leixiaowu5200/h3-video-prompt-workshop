@@ -36,7 +36,7 @@ const ZH_SCENES = {
     strength: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `今天，${ctx.brand}立足于${ctx.industryName}前沿，由世界级团队与技术驱动。`;
-        return `[镜头1] 宽幅跟拍镜头穿过${ctx.industryData.productContext}所在的专业作业场景。镜头以中等速度向前推移，依次展现一排排有序而精准的活动。身着职业装的工作人员专注地操作先进设备。${ctx.lightingDesc}。镜头捕捉到这一作业的规模与专业度。画外音（S1）以自信、权威的语气说道：<d>[中文] ${voZh}</d>，画面中工作人员嘴唇保持闭合。`;
+        return `[镜头1] 宽幅跟拍镜头穿过${ctx.brand}所在的专业作业场景。镜头以中等速度向前推移，依次展现一排排有序而精准的活动。身着职业装的工作人员专注地操作先进设备。${ctx.lightingDesc}。镜头捕捉到这一作业的规模与专业度。画外音（S1）以自信、权威的语气说道：<d>[中文] ${voZh}</d>，画面中工作人员嘴唇保持闭合。`;
       },
       soundscape(ctx) {
         return `机器设备有节奏的嗡鸣，叠加键盘轻响、抛光地面上的脚步声，以及繁忙专业环境的 ambient  buzz。`;
@@ -47,7 +47,7 @@ const ZH_SCENES = {
     },
     product: {
       visual(ctx) {
-        return `[镜头1] 中近景镜头，将${ctx.product || ctx.industryData.productContext}呈现在极简展台上。镜头以缓慢速度做 360 度环绕。影棚戏剧光打出的轮廓光勾出产品边缘，形成高级英雄镜头。${ctx.colorGrading}。右上角以现代无衬线字体淡入清爽的品牌名"${ctx.brand}"。产品下方的表面反射出微妙的光纹。`;
+        return `[镜头1] 中近景镜头，将${ctx.product || ctx.brand}呈现在极简展台上。镜头以缓慢速度做 360 度环绕。影棚戏剧光打出的轮廓光勾出产品边缘，形成高级英雄镜头。${ctx.colorGrading}。右上角以现代无衬线字体淡入清爽的品牌名"${ctx.brand}"。产品下方的表面反射出微妙的光纹。`;
       },
       soundscape(ctx) {
         return `安静的影棚氛围，伴着影棚灯具的微弱电流声，以及一缕几乎听不见、与画面精度相呼应的电子音。`;
@@ -122,7 +122,7 @@ const ZH_SCENES = {
     reveal: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `隆重推出 ${ctx.product || ctx.brand}——重新定义可能。`;
-        return `[镜头1] 特写镜头，${ctx.product || ctx.industryData.productContext}置于纯黑背景前。镜头以缓慢速度做 360 度环绕。戏剧影棚光打出明亮轮廓光，勾出产品每一处边缘与轮廓，形成惊艳英雄镜头。光在高级材质表面反射。画面中央以金属质感现代字体弹出醒目的品牌名"${ctx.product || ctx.brand}"。画外音（S1）以兴奋、揭晓的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 特写镜头，${ctx.product || ctx.brand}置于纯黑背景前。镜头以缓慢速度做 360 度环绕。戏剧影棚光打出明亮轮廓光，勾出产品每一处边缘与轮廓，形成惊艳英雄镜头。光在高级材质表面反射。画面中央以金属质感现代字体弹出醒目的品牌名"${ctx.product || ctx.brand}"。画外音（S1）以兴奋、揭晓的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `产品揭晓时一道干净利落的 whoosh，随后一缕传达高级质感与科技感的电子嗡鸣。`;
@@ -134,7 +134,7 @@ const ZH_SCENES = {
     features: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `每一处细节，皆臻于至善。每一项功能，皆为你而生。`;
-        return `[镜头1] 极特写镜头捕捉${ctx.product || ctx.industryData.productContext}的精细细节。镜头以缓慢速度小幅推进扫过表面，展现高级材质、精密工艺与细腻纹理。一根手指轻轻与产品互动，演示一项关键功能。画面下方三分之一处依次淡入极简无衬线文字："精工制造"，随后"智能科技"。画外音（S1）以信息感、自信的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 极特写镜头捕捉${ctx.product || ctx.brand}的精细细节。镜头以缓慢速度小幅推进扫过表面，展现高级材质、精密工艺与细腻纹理。一根手指轻轻与产品互动，演示一项关键功能。画面下方三分之一处依次淡入极简无衬线文字："精工制造"，随后"智能科技"。画外音（S1）以信息感、自信的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `指尖触碰光滑表面的清脆触感声、按钮的轻微咔哒、机械的细微嗡鸣，全部笼罩在干净影棚底噪中。`;
@@ -146,7 +146,7 @@ const ZH_SCENES = {
     lifestyle: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `看 ${ctx.product || ctx.brand} 如何无缝融入你的生活。`;
-        return `[镜头1] 中宽景镜头，展现一个人于美好的真实场景中使用${ctx.product || ctx.industryData.productContext}。镜头以中等速度从侧方跟拍，此人轻松愉悦地度过一天。${ctx.lightingDesc}。此人微笑，显然享受其中。产品自然地融入场景，升华此刻而非喧宾夺主。画外音（S1）以温暖、有共鸣的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+        return `[镜头1] 中宽景镜头，展现一个人于美好的真实场景中使用${ctx.product || ctx.brand}。镜头以中等速度从侧方跟拍，此人轻松愉悦地度过一天。${ctx.lightingDesc}。此人微笑，显然享受其中。产品自然地融入场景，升华此刻而非喧宾夺主。画外音（S1）以温暖、有共鸣的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
       },
       soundscape(ctx) {
         return `自然环境声——轻柔脚步、室内外环境音、产品细微运转声，以及使用者满足的低声。`;
@@ -158,7 +158,7 @@ const ZH_SCENES = {
     cta: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `${ctx.brand}。现已上市。感受不同。`;
-        return `[镜头1] 固定镜头，${ctx.product || ctx.industryData.productContext}醒目地呈现在干净渐变背景前。画面顶部出现"${ctx.brand}"标志。产品下方粗体文字叠层："${ctx.ctaText || '立即购买'}"与"${ctx.slogan || '感受不同'}"以清爽现代无衬线字体呈现。一道微光掠过文字。${ctx.colorGrading}。`;
+        return `[镜头1] 固定镜头，${ctx.product || ctx.brand}醒目地呈现在干净渐变背景前。画面顶部出现"${ctx.brand}"标志。产品下方粗体文字叠层："${ctx.ctaText || '立即购买'}"与"${ctx.slogan || '感受不同'}"以清爽现代无衬线字体呈现。一道微光掠过文字。${ctx.colorGrading}。`;
       },
       soundscape(ctx) {
         return `干净明亮的影棚氛围，文字出现时一声满意轻响，随后微电子铺底。`;
@@ -237,7 +237,7 @@ const ZH_SCENES = {
   ecommerce: {
     closeup: {
       visual(ctx) {
-        return `[镜头1] 极特写镜头，捕捉${ctx.product || ctx.industryData.productContext}被拆箱或揭晓的瞬间。镜头以大振幅缓慢推进扫过产品表面，展现高级质感、鲜亮色彩与精细细节。明亮影棚光搭配彩色点缀光，营造吸睛、适合社媒的观感。画面中央以动态动画弹出醒目的品牌名"${ctx.product || ctx.brand}"。${ctx.colorGrading}。`;
+        return `[镜头1] 极特写镜头，捕捉${ctx.product || ctx.brand}被拆箱或揭晓的瞬间。镜头以大振幅缓慢推进扫过产品表面，展现高级质感、鲜亮色彩与精细细节。明亮影棚光搭配彩色点缀光，营造吸睛、适合社媒的观感。画面中央以动态动画弹出醒目的品牌名"${ctx.product || ctx.brand}"。${ctx.colorGrading}。`;
       },
       soundscape(ctx) {
         return `拆箱满足感——纸张窸窣、盒子打开、指甲轻敲产品表面，以及文字出现时的细微电子 pop。`;
@@ -249,7 +249,7 @@ const ZH_SCENES = {
     selling: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `你会爱上它的三个理由。`;
-        return `[镜头1] 中近景镜头，从角度一展现${ctx.product || ctx.industryData.productContext}，突出卖点一。粗体文字"${ctx.sellingPoint1 || '高级品质'}"以动态入场动画弹出。[镜头2] 00:01.500 处切到不同角度展示卖点二，文字"${ctx.sellingPoint2 || '智能设计'}""。[镜头3] 00:03.000 处切到第三角度展示卖点三，文字"${ctx.sellingPoint3 || '超值之选'}"。每次切换揭晓一项新利益，配以 energetic 视觉转场。${ctx.colorGrading}。画外音（S1）以 energetic、销售导向的语气说道：<d>[中文] ${voZh}</d>`;
+        return `[镜头1] 中近景镜头，从角度一展现${ctx.product || ctx.brand}，突出卖点一。粗体文字"${ctx.sellingPoint1 || '高级品质'}"以动态入场动画弹出。[镜头2] 00:01.500 处切到不同角度展示卖点二，文字"${ctx.sellingPoint2 || '智能设计'}""。[镜头3] 00:03.000 处切到第三角度展示卖点三，文字"${ctx.sellingPoint3 || '超值之选'}"。每次切换揭晓一项新利益，配以 energetic 视觉转场。${ctx.colorGrading}。画外音（S1）以 energetic、销售导向的语气说道：<d>[中文] ${voZh}</d>`;
       },
       soundscape(ctx) {
         return `每次切换同步的 quick swoosh、产品互动的触觉声，以及文字叠层出现时的明亮电子 pop。`;
@@ -261,7 +261,7 @@ const ZH_SCENES = {
     results: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `亲眼见证改变。`;
-        return `[镜头1] 中景镜头，展现一个人于真实场景中使用${ctx.product || ctx.industryData.productContext}。镜头以中等速度从侧方跟拍，此人演示产品使用过程，清晰展现积极结果与满意感。使用前后的效果在视觉上令人信服。${ctx.lightingDesc}。此人神情由平静转为欣喜。画外音（S1）以热情的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
+        return `[镜头1] 中景镜头，展现一个人于真实场景中使用${ctx.product || ctx.brand}。镜头以中等速度从侧方跟拍，此人演示产品使用过程，清晰展现积极结果与满意感。使用前后的效果在视觉上令人信服。${ctx.lightingDesc}。此人神情由平静转为欣喜。画外音（S1）以热情的语气说道：<d>[中文] ${voZh}</d>，画面中人物嘴唇保持闭合。`;
       },
       soundscape(ctx) {
         return `自然环境声、产品使用声，以及使用者满意的细微声响，全部笼罩在明亮氛围底噪中。`;
@@ -273,7 +273,7 @@ const ZH_SCENES = {
     cta: {
       visual(ctx) {
         const voZh = ctx.voiceoverText || `立即选购——限时优惠！`;
-        return `[镜头1] 固定镜头，${ctx.product || ctx.industryData.productContext}醒目呈现，粗体文字叠层：顶部"${ctx.brand}"，中央大字号"${ctx.ctaText || '限时优惠'}"，底部按钮式"${ctx.slogan || '立即选购'}"。倒计时或"库存有限"提示增添紧迫感。${ctx.colorGrading}。构图以最大视觉冲击与转化为目标。`;
+        return `[镜头1] 固定镜头，${ctx.product || ctx.brand}醒目呈现，粗体文字叠层：顶部"${ctx.brand}"，中央大字号"${ctx.ctaText || '限时优惠'}"，底部按钮式"${ctx.slogan || '立即选购'}"。倒计时或"库存有限"提示增添紧迫感。${ctx.colorGrading}。构图以最大视觉冲击与转化为目标。`;
       },
       soundscape(ctx) {
         return `干净明亮的影棚声，每个文字元素出现时一声吸睛轻响，以及最后满足的 pop。`;
