@@ -542,6 +542,11 @@ function handleGenerate() {
     return;
   }
 
+  // 校验：添加了参考图却仍是「文生视频」模式 → 图片不会被写进提示词、海螺也不会参考
+  if (formData.genMode !== 'i2v' && Array.isArray(formData.referenceImages) && formData.referenceImages.length > 0) {
+    showToast('⚠️ 你添加了 ' + formData.referenceImages.length + ' 张参考图，但当前是「文生视频」模式，图片不会被使用。请先把生成模式切到「图生视频」，并在海螺 H3 里按相同顺序上传这些图。', 'warn');
+  }
+
   // 按钮加载状态
   const btn = document.getElementById('generateBtn');
   btn.classList.add('loading');
@@ -925,7 +930,7 @@ async function handleQwenOptimize(direction) {
   btn.disabled = true;
   btn.innerHTML = '✨ 优化中...';
 
-  let system = '你是 MiniMax H3 视频提示词专家，严格遵循官方 H3 Prompt Writing Guide。请把用户的中文 H3 提示词改写为地道、专业的英文提示词，并保留三字段结构。\n\n【强制格式规则】\n1. 字段顺序固定为 integrated_multimodal_description → overall_soundscape → non_diegetic_music，每段一字段、段间空一行，不要输出任何多余说明文字或 Markdown。\n2. integrated_multimodal_description 以 [Shot 1] 开头描述起始风格与构图；如需多镜头，后续用 [Shot 2] At 00:03.500, 这样的时间码（MM:SS.mmm，落在视频时长内）标记切镜；普通切镜用 the camera cuts to / the shot transitions to。\n3. 运镜写成自然英文动作，包含「运动类型 + 幅度 + 速度」三维度，例如 The camera pushes in with small amplitude at slow speed；幅度/速度仅在有意义时加（中幅度、常速通常省略）。\n4. 说话人用稳定 ID 如 (S1) / (S2)；对白与歌词用 <d>[English] ... </d> 包裹并原文照抄不翻译；画外音注明 says in an off-screen voiceover 并说明对应角色嘴唇闭合。\n5. 屏幕上真实可见的文字（标语/招牌/字幕）用英文双引号包裹，原文照抄不翻译。\n6. overall_soundscape：用 1–4 句英文概括全片环境声、物理动作声、非语言人声（风/雨/脚步/布料/呼吸/笑声等）；对话与剧情音已在前字段，不要重复；整片完全静音才用 N/A。\n7. non_diegetic_music：用 1–3 句英文描述只有观众能听到、角色听不到的配乐，聚焦乐器、速度、节奏与动态变化；不要用抽象情绪词，也不要解释音乐的情绪功能；无配乐用 N/A。';
+  let system = '你是 MiniMax H3 视频提示词专家，严格遵循官方 H3 Prompt Writing Guide。请把用户的中文 H3 提示词改写为地道、专业的英文提示词，并保留三字段结构。\n\n【强制格式规则】\n1. 字段顺序固定为 integrated_multimodal_description → overall_soundscape → non_diegetic_music，每段一字段、段间空一行，不要输出任何多余说明文字或 Markdown。\n2. integrated_multimodal_description 以 [Shot 1] 开头描述起始风格与构图；如需多镜头，后续用 [Shot 2] At 00:03.500, 这样的时间码（MM:SS.mmm，落在视频时长内）标记切镜；普通切镜用 the camera cuts to / the shot transitions to。\n3. 运镜写成自然英文动作，包含「运动类型 + 幅度 + 速度」三维度，例如 The camera pushes in with small amplitude at slow speed；幅度/速度仅在有意义时加（中幅度、常速通常省略）。\n4. 说话人用稳定 ID 如 (S1) / (S2)；对白与歌词保留原始语言并用对应语言标签包裹——中文用 <d>[Chinese] ... </d>、英文用 <d>[English] ... </d>，原文照抄不翻译；画外音注明 says in an off-screen voiceover 并说明对应角色嘴唇闭合。严禁把中文对白标成 [English]（否则海螺会用英语音素读中文，导致咬字不清）；语言标签必须与对白实际语言一致。\n5. 屏幕上真实可见的文字（标语/招牌/字幕）用英文双引号包裹，原文照抄不翻译。\n6. overall_soundscape：用 1–4 句英文概括全片环境声、物理动作声、非语言人声（风/雨/脚步/布料/呼吸/笑声等）；对话与剧情音已在前字段，不要重复；整片完全静音才用 N/A。\n7. non_diegetic_music：用 1–3 句英文描述只有观众能听到、角色听不到的配乐，聚焦乐器、速度、节奏与动态变化；不要用抽象情绪词，也不要解释音乐的情绪功能；无配乐用 N/A。';
 
   // 水疗养生行业：追加「调理不治疗」合规铁律 + 健康观念背书库
   if (state.formData.industry === 'hydro') {

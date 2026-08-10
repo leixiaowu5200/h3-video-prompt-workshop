@@ -1642,18 +1642,32 @@ const LIGHT_ZH = {
 // 2. (Shot type: ...; Camera: ...; Lighting: ...; Duration: ...) 英文美学控制括号
 // 3. 画外音引导语 + 嘴唇描述残留
 // 4. 多余空格与标点
-function cleanVisualForSpeech(body) {
+// 清理视觉正文，使其适合作为"画面描述 + 语音"混合提示词。
+// isZh：目标语言；stripVoiceover：是否剥离同源语言画外音（当用户提供了自定义台词时，
+// 用自定义台词替代模板默认画外音，避免两段话叠加）。
+// 关键：H3 只对 <d>[语言] ... </d> 标签内的文字做对口型朗读。
+//  - 与目标语言不符的 <d> 标签必须剥离（否则海螺会用错语言音素读中文 → 咬字不清）；
+//  - 与目标语言相符的 <d> 标签必须保留（这是画外音/台词能被朗读的唯一通道）。
+function cleanVisualForSpeech(body, isZh, stripVoiceover) {
   let s = body || '';
-  // 去掉 <d>[语言]...</d> 标签及内容（模板默认画外音）
-  s = s.replace(/<d>\[[^\]]*\][\s\S]*?<\/d>/g, '');
+  if (isZh) {
+    // 中文模式：剥离英文 <d>[English]，保留中文 <d>[中文]/<d>[Chinese]
+    s = s.replace(/<d>\[English\][\s\S]*?<\/d>/g, '');
+    if (stripVoiceover) s = s.replace(/<d>\[(?:中文|Chinese)\][\s\S]*?<\/d>/g, '');
+  } else {
+    // 英文模式：剥离中文标签，保留英文 <d>[English]
+    s = s.replace(/<d>\[(?:中文|Chinese)\][\s\S]*?<\/d>/g, '');
+    if (stripVoiceover) s = s.replace(/<d>\[English\][\s\S]*?<\/d>/g, '');
+  }
   // 去掉英文美学控制括号 (Shot type: ...; Camera: ...; Lighting: ...; Duration: ...)
   s = s.replace(/\s*\(Shot type:\s*[^)]+\)\s*/g, ' ');
-  // 中文引导语残留
-  s = s.replace(/画外音（S1）[^，。：]*说道：/g, '');
-  s = s.replace(/，?画面中[^。]*嘴唇[^。]*。?/g, '');
-  // 英文引导语+台词残留
-  s = s.replace(/The narrator \(S1\)[\s\S]*?(?:says|sounds|whispers|delivers|closes|continues|acknowledges|leads|states|narrates|speaks)[^.]*\./g, '');
-  s = s.replace(/,\s*while the on-screen person[^.]*/g, '');
+  // 引导语/嘴唇说明残留：仅当剥离画外音时才清掉，避免留下"画外音（S1）说道："悬空
+  if (stripVoiceover) {
+    s = s.replace(/画外音（S1）[^，。：]*说道：/g, '');
+    s = s.replace(/，?画面中[^。]*嘴唇[^。]*。?/g, '');
+    s = s.replace(/The narrator \(S1\)[\s\S]*?(?:says|sounds|whispers|delivers|closes|continues|acknowledges|leads|states|narrates|speaks)[^.]*\./g, '');
+    s = s.replace(/,\s*while the on-screen person[^.]*/g, '');
+  }
   // 收尾清理
   s = s.replace(/\s{2,}/g, ' ').trim();
   s = s.replace(/^[\s，,：:]+/, '');
@@ -1666,8 +1680,9 @@ function fmtDurLocal(d) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
 
-// 图生视频：按 H3 模板规则，在绝对开头输出连续的图片引用前缀
-// 例：@参考图1作为人物视觉参考（描述：主角，穿蓝色西装的中年男性）@参考图2作为产品视觉参考（…）
+// 图生视频：按上传顺序（第1张/第2张…）在绝对开头输出连续的图片引用前缀，
+// 与用户在海螺 H3 里上传图片的顺序一一对应（H3 按上传顺序识别参考图）。
+// 例：@第1张参考图（人物视觉参考，描述：主角，穿蓝色西装的中年男性）@第2张参考图（产品视觉参考，…）
 function buildImageRefLine(refImages, isZh) {
   if (!refImages || !refImages.length) return '';
   const parts = refImages.map((r, i) => {
@@ -1675,9 +1690,9 @@ function buildImageRefLine(refImages, isZh) {
     const t = (r.type || '参考');
     const d = (r.desc || '').trim();
     if (isZh) {
-      return '@参考图' + num + '作为' + t + '视觉参考' + (d ? ('（描述：' + d + '）') : '');
+      return '@第' + num + '张参考图（' + t + '视觉参考' + (d ? ('，描述：' + d) : '') + '）';
     }
-    return '@Image' + num + ' as ' + refTypeEn(t) + ' reference' + (d ? (' (description: ' + d + ')') : '');
+    return '@Image ' + num + ' (' + refTypeEn(t) + ' reference' + (d ? ('; description: ' + d) : '') + ')';
   });
   return parts.join('') + (isZh ? '' : ' ');
 }
@@ -1814,8 +1829,8 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
   let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
   // 全局去掉模板自带的 [Shot N] / [镜头N] 前缀，避免嵌套
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
-  // ★ 无论是否提供台词，始终清理 <d> 标签、英文括号、引导语等噪声
-  body = cleanVisualForSpeech(body);
+  // 清理噪声：仅剥离"与目标语言不符"的 <d> 标签；若用户提供自定义台词，则连同源语言画外音一起剥离（避免两段话叠加）
+  body = cleanVisualForSpeech(body, isZh, !!dialogueLine);
 
   const tc = index === 0 ? '' : (fmtTimecode(startSec) + ', ');
   const includeMarker = !(opts && opts.includeMarker === false);
@@ -1832,13 +1847,15 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
     }
   }
 
-  // 台词（显式、可读，避免海螺发音糊成乱语）
+  // 台词：必须用 H3 官方 <d>[语言] ... </d> 标签包裹，H3 才会对口型朗读；
+  // 写成"台词：「...」"这类自然语言 H3 不识别，会把整段密集提示词当念稿读出 → 咬字不清。
   let dl = '';
   if (dialogueLine) {
+    const safe = String(dialogueLine).replace(/<\/?d>/g, '').replace(/\[(?:中文|Chinese|English)\]/g, '').trim();
     if (isZh) {
-      dl = ' 台词：「' + dialogueLine + '」（角色清晰说出，普通话，语速适中，口型与台词同步）';
+      dl = ' <d>[Chinese] ' + safe + ' </d>（角色用标准普通话清晰说出，语速适中，口型与台词精准同步）';
     } else {
-      dl = ' Spoken line: "' + dialogueLine + '" (clear speech, natural pace, lipsync).';
+      dl = ' <d>[English] "' + safe + '" </d> (spoken in clear English, steady pace, precise lipsync)';
     }
   }
 
@@ -1902,12 +1919,12 @@ function buildRefNoteForShot(refImages, shotIndex, isZh) {
   const parts = used.map(r => {
     const num = refImages.indexOf(r) + 1;
     return isZh
-      ? '[参考图' + num + ']（' + (r.type || '参考') + '）'
-      : '[Reference Image ' + num + '] (' + refTypeEn(r.type) + ')';
+      ? ('第' + num + '张参考图（' + (r.type || '参考') + '）')
+      : ('the image ' + num + ' (' + refTypeEn(r.type) + ')');
   });
   return isZh
-    ? ' 本镜头使用：' + parts.join('、') + '，保持与参考图一致。'
-    : ' This shot uses: ' + parts.join(', ') + ' — keep consistent with the reference images.';
+    ? ' 本镜头使用' + parts.join('、') + '，与该图外观严格保持一致（颜色、材质、构图均以此图为准）。'
+    : ' This shot uses ' + parts.join(', ') + ' — match their appearance exactly (color, material, composition referenced from these images).';
 }
 
 // ========== Full-Reference 全参考模式：整片六段式提示词 ==========
@@ -1995,8 +2012,8 @@ function buildFullReference(scenes, formData, lang) {
     ', ' + (scenes[0].lighting || 'motivated lighting') + ', and physically plausible camera movement.';
   let dd = styleLine + '\n';
   if (isI2V) {
-    const refsZh = refImages.map((r, k) => '[参考图' + (k + 1) + ']（' + (r.type || '参考') + '）').join('、');
-    const refsEn = refImages.map((r, k) => '[Reference Image ' + (k + 1) + '] (' + refTypeEn(r.type) + ')').join(', ');
+    const refsZh = refImages.map((r, k) => '第' + (k + 1) + '张参考图（' + (r.type || '参考') + '）').join('、');
+    const refsEn = refImages.map((r, k) => 'Image ' + (k + 1) + ' (' + refTypeEn(r.type) + ')').join(', ');
     if (isZh) {
       dd += '全片严格参照以下参考图保持主体一致：' + refsZh + '。\n';
     } else {
