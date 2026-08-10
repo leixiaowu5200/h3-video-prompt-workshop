@@ -468,8 +468,6 @@ body::before {
 /* ========== Storyboard Section ========== */
 .storyboard-section {
   padding: 28px 32px;
-  overflow-y: auto;
-  max-height: calc(100vh - 85px);
 }
 
 .storyboard-section::-webkit-scrollbar { width: 6px; }
@@ -835,8 +833,7 @@ body::before {
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 200px;
-  overflow-y: auto;
+  max-height: none;
 }
 
 .prompt-content::-webkit-scrollbar { width: 4px; }
@@ -887,8 +884,7 @@ body::before {
 }
 .fullref-content {
   margin: 0;
-  max-height: 460px;
-  overflow: auto;
+  max-height: none;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -1062,7 +1058,7 @@ body::before {
   color: var(--text-primary);
 }
 .fullref-lang-box .fullref-content {
-  max-height: 520px;
+  max-height: none;
 }
 
 /* ========== Toast ========== */

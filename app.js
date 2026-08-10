@@ -821,8 +821,8 @@ function bindBackToTop() {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(() => {
-      const oneThird = document.documentElement.scrollHeight / 3;
-      if (window.scrollY > oneThird) {
+      const threshold = Math.min(350, document.documentElement.scrollHeight * 0.3);
+      if (window.scrollY > threshold) {
         btn.classList.add('show');
       } else {
         btn.classList.remove('show');
