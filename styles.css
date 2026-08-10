@@ -541,14 +541,21 @@ body::before {
   margin-top: 4px;
 }
 
-/* 分镜头部 */
+/* 分镜头部（操作按钮栏，置于完整提示词上方） */
 .storyboard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+/* 仅含 h2 的分镜标题，紧贴完整提示词下沿 */
+.storyboard-header--shots {
+  justify-content: flex-start;
+  margin-top: 20px;
+  margin-bottom: 14px;
 }
 
 .storyboard-header h2 {
