@@ -265,6 +265,13 @@ function bindEvents() {
 }
 
 // ========== 生成模式（文生视频 / 图生视频）+ 参考图 ==========
+// 参考图默认类型（按顺序轮换，仅作建议，用户可自行编辑）
+const REF_TYPE_DEFAULTS = ['人物', '产品/设备', '场景'];
+function getNextRefDefaultType() {
+  const idx = state.referenceImages.length;
+  return (idx >= 0 && idx < REF_TYPE_DEFAULTS.length) ? REF_TYPE_DEFAULTS[idx] : '参考';
+}
+
 function bindGenMode() {
   const grid = document.getElementById('genModeGrid');
   if (!grid) return;
@@ -276,7 +283,7 @@ function bindGenMode() {
       const sec = document.getElementById('refImagesSection');
       if (sec) sec.style.display = state.genMode === 'i2v' ? 'block' : 'none';
       if (state.genMode === 'i2v' && state.referenceImages.length === 0) {
-        state.referenceImages.push({ type: '人物', desc: '', scope: 'all' });
+        state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
         renderRefImageRows();
       }
     });
@@ -284,7 +291,7 @@ function bindGenMode() {
 
   const addBtn = document.getElementById('addRefImageBtn');
   if (addBtn) addBtn.addEventListener('click', () => {
-    state.referenceImages.push({ type: '人物', desc: '', scope: 'all' });
+    state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
     renderRefImageRows();
   });
 
@@ -323,7 +330,7 @@ function renderRefImageRows() {
     return '<div class="ref-row" data-idx="' + i + '">' +
       '<div class="ref-idx">图' + idx + '</div>' +
       '<div class="ref-fields">' +
-        '<input class="ref-type" data-field="type" value="' + escapeHtml(r.type || '') + '" placeholder="类型，如：人物/产品/场景">' +
+        '<input class="ref-type" data-field="type" value="' + escapeHtml(r.type || '') + '" placeholder="类型（默认建议，可改）">' +
         '<input class="ref-desc" data-field="desc" value="' + escapeHtml(r.desc || '') + '" placeholder="描述，如：主角，穿蓝色西装的中年男性">' +
         '<select class="ref-scope" data-field="scope">' + scopeOpts + '</select>' +
       '</div>' +

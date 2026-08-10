@@ -1370,14 +1370,24 @@ const LIGHT_ZH = {
   'dramatic key-light flip': '戏剧性主光翻转', 'clean, confident': '干净自信'
 };
 
-// 当用户显式提供台词时，清掉模板里默认的 <d> 画外音片段，避免"双重发音/乱语"
+// 清理镜头文本中的残留噪声（无论用户是否填台词，都应执行）
+// 1. <d>[中文/English]...</d> 模板画外音标签
+// 2. (Shot type: ...; Camera: ...; Lighting: ...; Duration: ...) 英文美学控制括号
+// 3. 画外音引导语 + 嘴唇描述残留
+// 4. 多余空格与标点
 function cleanVisualForSpeech(body) {
   let s = body || '';
-  s = s.replace(/<d>\[[^\]]*\][\s\S]*?<\/d>/g, '');                                   // 去掉 <d>[...]</d>
-  s = s.replace(/画外音（S1）[^，。：]*说道：/g, '');                                  // 中文引导语
-  s = s.replace(/，?画面中[^。]*嘴唇[^。]*。?/g, '');                                  // 残留嘴唇描述
-  s = s.replace(/The narrator \(S1\)[\s\S]*?(?:says|sounds|whispers|delivers|closes|continues|acknowledges|leads|states|narrates|speaks)[^.]*\./g, ''); // 英文引导语+台词
-  s = s.replace(/,\s*while the on-screen person[^.]*/g, '');                          // 英文嘴唇残留
+  // 去掉 <d>[语言]...</d> 标签及内容（模板默认画外音）
+  s = s.replace(/<d>\[[^\]]*\][\s\S]*?<\/d>/g, '');
+  // 去掉英文美学控制括号 (Shot type: ...; Camera: ...; Lighting: ...; Duration: ...)
+  s = s.replace(/\s*\(Shot type:\s*[^)]+\)\s*/g, ' ');
+  // 中文引导语残留
+  s = s.replace(/画外音（S1）[^，。：]*说道：/g, '');
+  s = s.replace(/，?画面中[^。]*嘴唇[^。]*。?/g, '');
+  // 英文引导语+台词残留
+  s = s.replace(/The narrator \(S1\)[\s\S]*?(?:says|sounds|whispers|delivers|closes|continues|acknowledges|leads|states|narrates|speaks)[^.]*\./g, '');
+  s = s.replace(/,\s*while the on-screen person[^.]*/g, '');
+  // 收尾清理
   s = s.replace(/\s{2,}/g, ' ').trim();
   s = s.replace(/^[\s，,：:]+/, '');
   return s;
@@ -1391,8 +1401,8 @@ function buildShotBlock(scene, index, startSec, lang, refNote) {
   let body = (isZh ? scene.visualZh : scene.visualEn) || '';
   // 全局去掉模板自带的 [Shot N] / [镜头N] 前缀，避免嵌套
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
-  // 用户提供台词时，清掉模板默认 <d> 画外音，改为下方显式台词
-  if (dialogueLine) body = cleanVisualForSpeech(body);
+  // ★ 无论是否提供台词，始终清理 <d> 标签、英文括号、引导语等噪声
+  body = cleanVisualForSpeech(body);
 
   const tc = index === 0 ? '' : (fmtTimecode(startSec) + ', ');
   const marker = '[Shot ' + (index + 1) + '] ' + tc;
