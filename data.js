@@ -1642,32 +1642,18 @@ const LIGHT_ZH = {
 // 2. (Shot type: ...; Camera: ...; Lighting: ...; Duration: ...) 英文美学控制括号
 // 3. 画外音引导语 + 嘴唇描述残留
 // 4. 多余空格与标点
-// 清理视觉正文，使其适合作为"画面描述 + 语音"混合提示词。
-// isZh：目标语言；stripVoiceover：是否剥离同源语言画外音（当用户提供了自定义台词时，
-// 用自定义台词替代模板默认画外音，避免两段话叠加）。
-// 关键：H3 只对 <d>[语言] ... </d> 标签内的文字做对口型朗读。
-//  - 与目标语言不符的 <d> 标签必须剥离（否则海螺会用错语言音素读中文 → 咬字不清）；
-//  - 与目标语言相符的 <d> 标签必须保留（这是画外音/台词能被朗读的唯一通道）。
-function cleanVisualForSpeech(body, isZh, stripVoiceover) {
+function cleanVisualForSpeech(body) {
   let s = body || '';
-  if (isZh) {
-    // 中文模式：剥离英文 <d>[English]，保留中文 <d>[中文]/<d>[Chinese]
-    s = s.replace(/<d>\[English\][\s\S]*?<\/d>/g, '');
-    if (stripVoiceover) s = s.replace(/<d>\[(?:中文|Chinese)\][\s\S]*?<\/d>/g, '');
-  } else {
-    // 英文模式：剥离中文标签，保留英文 <d>[English]
-    s = s.replace(/<d>\[(?:中文|Chinese)\][\s\S]*?<\/d>/g, '');
-    if (stripVoiceover) s = s.replace(/<d>\[English\][\s\S]*?<\/d>/g, '');
-  }
+  // 去掉 <d>[语言]...</d> 标签及内容（模板默认画外音）
+  s = s.replace(/<d>\[[^\]]*\][\s\S]*?<\/d>/g, '');
   // 去掉英文美学控制括号 (Shot type: ...; Camera: ...; Lighting: ...; Duration: ...)
   s = s.replace(/\s*\(Shot type:\s*[^)]+\)\s*/g, ' ');
-  // 引导语/嘴唇说明残留：仅当剥离画外音时才清掉，避免留下"画外音（S1）说道："悬空
-  if (stripVoiceover) {
-    s = s.replace(/画外音（S1）[^，。：]*说道：/g, '');
-    s = s.replace(/，?画面中[^。]*嘴唇[^。]*。?/g, '');
-    s = s.replace(/The narrator \(S1\)[\s\S]*?(?:says|sounds|whispers|delivers|closes|continues|acknowledges|leads|states|narrates|speaks)[^.]*\./g, '');
-    s = s.replace(/,\s*while the on-screen person[^.]*/g, '');
-  }
+  // 中文引导语残留
+  s = s.replace(/画外音（S1）[^，。：]*说道：/g, '');
+  s = s.replace(/，?画面中[^。]*嘴唇[^。]*。?/g, '');
+  // 英文引导语+台词残留
+  s = s.replace(/The narrator \(S1\)[\s\S]*?(?:says|sounds|whispers|delivers|closes|continues|acknowledges|leads|states|narrates|speaks)[^.]*\./g, '');
+  s = s.replace(/,\s*while the on-screen person[^.]*/g, '');
   // 收尾清理
   s = s.replace(/\s{2,}/g, ' ').trim();
   s = s.replace(/^[\s，,：:]+/, '');
@@ -1680,9 +1666,8 @@ function fmtDurLocal(d) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
 
-// 图生视频：按上传顺序（第1张/第2张…）在绝对开头输出连续的图片引用前缀，
-// 与用户在海螺 H3 里上传图片的顺序一一对应（H3 按上传顺序识别参考图）。
-// 例：@第1张参考图（人物视觉参考，描述：主角，穿蓝色西装的中年男性）@第2张参考图（产品视觉参考，…）
+// 图生视频：按 H3 模板规则，在绝对开头输出连续的图片引用前缀
+// 例：@参考图1作为人物视觉参考（描述：主角，穿蓝色西装的中年男性）@参考图2作为产品视觉参考（…）
 function buildImageRefLine(refImages, isZh) {
   if (!refImages || !refImages.length) return '';
   const parts = refImages.map((r, i) => {
@@ -1690,9 +1675,9 @@ function buildImageRefLine(refImages, isZh) {
     const t = (r.type || '参考');
     const d = (r.desc || '').trim();
     if (isZh) {
-      return '@第' + num + '张参考图（' + t + '视觉参考' + (d ? ('，描述：' + d) : '') + '）';
+      return '@参考图' + num + '作为' + t + '视觉参考' + (d ? ('（描述：' + d + '）') : '');
     }
-    return '@Image ' + num + ' (' + refTypeEn(t) + ' reference' + (d ? ('; description: ' + d) : '') + ')';
+    return '@Image' + num + ' as ' + refTypeEn(t) + ' reference' + (d ? (' (description: ' + d + ')') : '');
   });
   return parts.join('') + (isZh ? '' : ' ');
 }
@@ -1722,88 +1707,80 @@ function splitDuration(dur) {
 // 单镜头的结构化自然语言简报核心（细分时间线 + 镜头运动 + 视觉风格 + 声音设计）
 // 用于让每个镜头的提示词填满其时长，符合 H3「时间段无缺口覆盖完整时长、全正向描述」的要求
 // 中文模式：技术词一律取中文翻译，匹配不到则留空（绝不回退英文，避免中英混杂）
+// 单镜头的结构化自然语言简报核心（遵循海螺/MiniMax 官方指南）：
+//   1) 先描述整体场景（地点 + 人物 + 正在发生的事）——取镜头正文首句
+//   2) 再按时间拆分为多段，每段合并「镜头 + 相机运动」
+//   3) 声音（台词/音效/音乐）在块内只描述一次，避免逐段重复啰嗦
+// 中文模式：技术词一律取中文翻译，匹配不到则留空（绝不回退英文，避免中英混杂）
 function buildShotBriefCore(scene, lang) {
   const isZh = lang === 'zh';
   const dur = scene.duration || 5;
 
-  // 中文：景别/运镜取中文翻译（匹配不到留空）；英文：原样术语（H3 英文提示词本就需要英文）
   const shotZh = isZh ? (SHOT_TYPE_ZH[(scene.shotType || '').trim()] || '') : '';
   const camZh = isZh ? (CAM_ZH[(scene.cameraMovement || '').trim()] || '') : '';
   const shotEn = scene.shotType || '';
   const camEn = scene.cameraMovement || '';
-  const lightEn = scene.lighting || '';
-  const color = scene.colorGrading || '';
+
+  const sound = isZh
+    ? (scene.soundscapeZh || '贴合画面的自然环境底噪')
+    : (scene.soundscapeEn || 'natural ambient sound');
+  const music = isZh ? (scene.musicZh || '') : (scene.musicEn || '');
+  const dialogue = scene.dialogueLine || '';
+
+  // 镜头正文（已清理掉 <d> 画外音标签、美学控制括号等噪声）
+  let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
+  body = cleanVisualForSpeech((' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim());
+  // 按句拆分：首句作"整体场景"，其余句作为时间线推进内容
+  const sentences = body.split(/[。.\n]/).map(s => s.trim()).filter(Boolean);
+  const overall = sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
+  const prog = sentences.slice(1);
 
   // 细分时间线（覆盖完整时长，无缺口）
   const bounds = splitDuration(dur);
   const segs = [];
   for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
 
-  // 从镜头正文抽取若干分句，落到真实内容而非空话
-  let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
-  body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
-  const clauses = body.split(/[，。；,.\n]/).map(s => s.trim()).filter(Boolean);
-
-  const sound = isZh
-    ? (scene.soundscapeZh || '贴合画面节奏的自然环境底噪')
-    : (scene.soundscapeEn || 'natural ambient sound matching the scene');
-
-  // 逐段生成 beat：首段建立、中段推进、末段收束
   const beats = segs.map((seg, i) => {
     const [s, e] = seg;
     const range = isZh ? (s + '—' + e + '秒') : (s + '-' + e + 's');
-    if (i === 0) {
-      const setup = clauses[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
-      if (isZh) {
-        return range + '：' + (shotZh ? (shotZh + '，') : '') + '画面呈现「' + setup + '」。';
-      }
-      return range + ': ' + (shotEn || 'The shot') + ' establishes — ' + setup + '. ' + (lightEn || '') + '.';
-    }
-    if (i === segs.length - 1) {
-      if (isZh) {
-        // textOverlay 为布尔 true 时只表示"有字幕"，实际文字已写在正文里，勿显示「true」
-        const hasText = (typeof scene.textOverlay === 'string' && scene.textOverlay.trim());
-        const closing = hasText
-          ? ('画面以文字「' + scene.textOverlay + '」收束')
-          : ((shotZh ? (shotZh + '稳定落定') : '镜头稳定落定') + '，主体外观与参考图保持一致，动作达成明确结果');
-        return range + '：' + closing + '，画面定格于明确结果。';
-      }
-      const hasTextEn = (typeof scene.textOverlay === 'string' && scene.textOverlay.trim());
-      const closingEn = hasTextEn
-        ? ('closes on the on-screen text "' + scene.textOverlay + '"')
-        : ((shotEn || 'The shot') + ' settles, subject stays consistent with the reference, action lands on a clear result');
-      return range + ': ' + closingEn + '; ' + (lightEn || '') + ' settles, subject consistent, frame locks on a clear result.';
-    }
-    // 中间段：取后续分句作为推进，循环兜底
-    const content = clauses[i] || clauses[(i % Math.max(1, clauses.length - 1)) + 1]
-      || (isZh ? '动作持续推进，主体神态与姿态发生可见变化，情绪逐步积累' : 'action continues, the subject’s expression and posture shift visibly as emotion builds');
+    const content = prog[i] || (prog.length ? prog[i % prog.length] : '')
+      || (isZh ? '动作持续推进，主体神态与姿态发生可见变化，情绪逐步积累'
+               : 'action continues, the subject’s expression and posture shift visibly as emotion builds');
     if (isZh) {
-      return range + '：' + content + (camZh ? ('，运镜·' + camZh) : '') + '，主体保持连贯。';
+      return range + '：' + (shotZh ? (shotZh + '，') : '') + content + '，运镜·' + (camZh || '自然运镜') + '。';
     }
-    return range + ': ' + content + '; camera ' + (camEn || 'moves naturally') + ', subject stays continuous.';
+    // 英文：相机运动字符串常以 "The camera" 开头，避免拼出 "camera The camera"
+    const camText = (camEn && /^the camera/i.test(camEn))
+      ? (camEn.charAt(0).toLowerCase() + camEn.slice(1))
+      : (camEn || 'moves naturally');
+    return range + ': ' + (shotEn ? (shotEn + ', ') : '') + content + '; ' + camText + '.';
   });
 
-  const timeline = (isZh ? '【时间线 · 共 ' + dur + ' 秒，细分 ' + segs.length + ' 段】\n' : '【Timeline · ' + dur + 's, ' + segs.length + ' segments】\n') + beats.join('\n');
-
-  // 镜头运动行：中文仅在有中文翻译时显示；英文如实保留
-  let cameraLine = '';
+  // 声音：块内只描述一次（台词 > 环境音 > 配乐），避免逐段重复
+  let audioLine = '';
+  const trimEnd = (s) => (s || '').replace(/[。.\s，,]+$/, '');
   if (isZh) {
-    if (shotZh || camZh) cameraLine = '【镜头运动】景别·' + (shotZh || '—') + '；运镜·' + (camZh || '自然运镜') + '。';
+    const audio = [];
+    if (dialogue) audio.push('台词「' + dialogue + '」');
+    audio.push('环境音·' + trimEnd(sound));
+    if (music) audio.push('配乐·' + trimEnd(music));
+    audioLine = '【声音】' + audio.join('，') + '。';
   } else {
-    cameraLine = '【Camera】Shot size: ' + (shotEn || '—') + '; Movement: ' + (camEn || 'natural motion') + '.';
+    const audio = [];
+    if (dialogue) audio.push('dialogue "' + dialogue + '"');
+    audio.push('ambient ' + trimEnd(sound));
+    if (music) audio.push('music ' + trimEnd(music));
+    audioLine = '【Audio】' + audio.join(', ') + '.';
   }
 
-  // 视觉风格行：中文模式省略（避免英文光照/色调词泄漏；画面描述已在正文与时间线中）；英文模式如实保留
-  let visualLine = '';
-  if (!isZh) {
-    visualLine = '【Visual style & material】' + (lightEn || '') + (color ? (', ' + color) : '') + '.';
-  }
+  const header = isZh
+    ? ('【整体场景】' + overall + '\n')
+    : ('【Overall scene】' + overall + '\n');
+  const timeline = (isZh
+    ? ('【分镜时间线 · 共 ' + dur + ' 秒，' + segs.length + ' 段】\n')
+    : ('【Shot timeline · ' + dur + 's, ' + segs.length + ' segments】\n')) + beats.join('\n');
 
-  const soundLine = isZh
-    ? '【声音设计】' + sound + '。'
-    : '【Sound design】' + sound + '.';
-
-  return '\n' + timeline + (cameraLine ? ('\n' + cameraLine) : '') + (visualLine ? ('\n' + visualLine) : '') + '\n' + soundLine;
+  return '\n' + header + timeline + audioLine + '\n';
 }
 
 // 从下一镜抽取简短"开头画面"，用于衔接指令
@@ -1829,8 +1806,8 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
   let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
   // 全局去掉模板自带的 [Shot N] / [镜头N] 前缀，避免嵌套
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
-  // 清理噪声：仅剥离"与目标语言不符"的 <d> 标签；若用户提供自定义台词，则连同源语言画外音一起剥离（避免两段话叠加）
-  body = cleanVisualForSpeech(body, isZh, !!dialogueLine);
+  // ★ 无论是否提供台词，始终清理 <d> 标签、英文括号、引导语等噪声
+  body = cleanVisualForSpeech(body);
 
   const tc = index === 0 ? '' : (fmtTimecode(startSec) + ', ');
   const includeMarker = !(opts && opts.includeMarker === false);
@@ -1847,15 +1824,13 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
     }
   }
 
-  // 台词：必须用 H3 官方 <d>[语言] ... </d> 标签包裹，H3 才会对口型朗读；
-  // 写成"台词：「...」"这类自然语言 H3 不识别，会把整段密集提示词当念稿读出 → 咬字不清。
+  // 台词（显式、可读，避免海螺发音糊成乱语）
   let dl = '';
   if (dialogueLine) {
-    const safe = String(dialogueLine).replace(/<\/?d>/g, '').replace(/\[(?:中文|Chinese|English)\]/g, '').trim();
     if (isZh) {
-      dl = ' <d>[Chinese] ' + safe + ' </d>（角色用标准普通话清晰说出，语速适中，口型与台词精准同步）';
+      dl = ' 台词：「' + dialogueLine + '」（角色清晰说出，普通话，语速适中，口型与台词同步）';
     } else {
-      dl = ' <d>[English] "' + safe + '" </d> (spoken in clear English, steady pace, precise lipsync)';
+      dl = ' Spoken line: "' + dialogueLine + '" (clear speech, natural pace, lipsync).';
     }
   }
 
@@ -1868,6 +1843,8 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
 
 // 分镜卡片「直投提示词」专用：H3 标准开头 + 参考图前缀 + 结构化简报（不含 [Shot N] 标记）
 // nextScene：下一镜（用于生成"衔接下一镜开头"指令；末镜传 null 表示收尾）
+// 分镜卡片「直投提示词」专用：H3 标准开头 + 整体场景 + 分段时间线（镜头/相机/音频合并）+ 衔接/收尾
+// nextScene：下一镜（用于生成"衔接下一镜开头"指令；末镜传 null 表示收尾）
 function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene) {
   const isZh = lang === 'zh';
   const dur = scene.duration || 5;
@@ -1876,7 +1853,7 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
   const opening = isZh
     ? ('生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频：\n')
     : ('Generate ' + article + ' ' + dur + '-second, 16:9, 2K, native stereo, MiniMax H3 video:\n');
-  const block = buildShotBlock(scene, index, startSec, lang, refNote, { includeMarker: false });
+  const core = buildShotBriefCore(scene, lang);
 
   // 衔接 / 收尾指令
   let tail = '';
@@ -1884,14 +1861,14 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
     const nextOpening = deriveOpening(nextScene, lang);
     tail = isZh
       ? ('\n【衔接要求】本镜头结尾的画面主体姿态、构图与色调，必须能自然无缝衔接下一镜的开头：「' + nextOpening + '」。两段之间不加黑场，用连续运镜或匹配剪辑衔接，确保成片流畅不跳切。')
-      : ('\n【Continuity】The ending of this shot must seamlessly connect to the opening of the next shot: "' + nextOpening + '". No black frames between; use continuous camera motion or a match cut so the final edit flows without jumps.');
+      : ('\n【Continuity】The ending of this shot must seamlessly connect to the opening of the next shot: "' + nextOpening + '". No black frames; use continuous camera motion or a match cut so the final edit flows without jumps.');
   } else {
     tail = isZh
       ? '\n【收尾】本镜头结尾定格在品牌/产品特写或 Logo，画面稳定、信息清晰，自然收束全片。'
       : '\n【Closing】End on a stable close-up of the brand/product or logo, clean and readable, naturally closing the film.';
   }
 
-  return imgRefs + opening + block + tail;
+  return imgRefs + opening + core + (refNote || '') + tail;
 }
 
 // 参考图类型 → 英文（用于英文提示词）
@@ -1919,12 +1896,12 @@ function buildRefNoteForShot(refImages, shotIndex, isZh) {
   const parts = used.map(r => {
     const num = refImages.indexOf(r) + 1;
     return isZh
-      ? ('第' + num + '张参考图（' + (r.type || '参考') + '）')
-      : ('the image ' + num + ' (' + refTypeEn(r.type) + ')');
+      ? '[参考图' + num + ']（' + (r.type || '参考') + '）'
+      : '[Reference Image ' + num + '] (' + refTypeEn(r.type) + ')';
   });
   return isZh
-    ? ' 本镜头使用' + parts.join('、') + '，与该图外观严格保持一致（颜色、材质、构图均以此图为准）。'
-    : ' This shot uses ' + parts.join(', ') + ' — match their appearance exactly (color, material, composition referenced from these images).';
+    ? ' 本镜头使用：' + parts.join('、') + '，保持与参考图一致。'
+    : ' This shot uses: ' + parts.join(', ') + ' — keep consistent with the reference images.';
 }
 
 // ========== Full-Reference 全参考模式：整片六段式提示词 ==========
@@ -2012,8 +1989,8 @@ function buildFullReference(scenes, formData, lang) {
     ', ' + (scenes[0].lighting || 'motivated lighting') + ', and physically plausible camera movement.';
   let dd = styleLine + '\n';
   if (isI2V) {
-    const refsZh = refImages.map((r, k) => '第' + (k + 1) + '张参考图（' + (r.type || '参考') + '）').join('、');
-    const refsEn = refImages.map((r, k) => 'Image ' + (k + 1) + ' (' + refTypeEn(r.type) + ')').join(', ');
+    const refsZh = refImages.map((r, k) => '[参考图' + (k + 1) + ']（' + (r.type || '参考') + '）').join('、');
+    const refsEn = refImages.map((r, k) => '[Reference Image ' + (k + 1) + '] (' + refTypeEn(r.type) + ')').join(', ');
     if (isZh) {
       dd += '全片严格参照以下参考图保持主体一致：' + refsZh + '。\n';
     } else {
