@@ -541,17 +541,19 @@ body::before {
   left: 50%;
   bottom: calc(100% + 8px);
   transform: translateX(-50%);
-  white-space: normal;
-  max-width: 240px;
+  white-space: nowrap;
+  min-width: 200px;
+  max-width: 340px;
   text-align: center;
+  word-break: break-all;
   background: #1f2430;
   color: #e8edf5;
   border: 1px solid var(--border-hover);
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.6;
   z-index: 60;
   pointer-events: none;
   box-shadow: 0 6px 18px rgba(0,0,0,.35);
@@ -875,6 +877,11 @@ body::before {
   transition: var(--transition);
   animation: fadeInUp 0.4s ease forwards;
   opacity: 0;
+}
+
+/* 悬停画幅比例标签时，临时放行溢出（让气泡不被裁切） */
+.scene-card:has(.ratio-px:hover) {
+  overflow: visible;
 }
 
 @keyframes fadeInUp {
