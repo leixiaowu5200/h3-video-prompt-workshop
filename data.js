@@ -1764,6 +1764,92 @@ function splitDuration(dur) {
 //   1) 先描述整体场景（地点 + 人物 + 正在发生的事）——取镜头正文首句
 //   2) 再按时间拆分为多段，每段合并「镜头 + 相机运动」
 //   3) 声音（台词/音效/音乐）在块内只描述一次，避免逐段重复啰嗦
+// ---- 主体类型识别（角色 / 产品 / 场景），决定一致性锁定的正确措辞 ----
+function detectSubject(scene, lang) {
+  const t = (lang === 'zh'
+    ? (scene.visualZh || scene.visualZhBase || '')
+    : (scene.visualEn || scene.visualEnBase || '')).toLowerCase();
+  const hasPerson = /人|角色|主角|顾客|使用者|消费者|用户|她|他|模特/.test(t) ||
+    /person|character|protagonist|customer|user|model/.test(t);
+  const hasProduct = /产品|设备|商品|品牌|浴缸|装置|机器|水疗|摩雅|巨晴|仪器/.test(t) ||
+    /product|device|brand|machine|equipment|appliance|bathtub|tub|hydrotherapy|gadget|tool/.test(t);
+  return { character: hasPerson, product: hasProduct, scene: (!hasPerson && !hasProduct) };
+}
+
+function lockClauseZh(subject) {
+  const p = [];
+  if (subject.character) p.push('角色一致性：画面中人物五官、发型、服装、身材比例保持完全一致，不换脸、不变装、不融合人物特征');
+  if (subject.product) p.push('主体一致性：设备造型、材质、标识与结构细节保持完全一致，无变形、无多余元素增减');
+  if (subject.scene || p.length === 0) p.push('场景一致性：空间陈设与光影基调保持统一稳定');
+  return p.join('；') + '。';
+}
+function lockClauseEn(subject) {
+  const p = [];
+  if (subject.character) p.push('Character consistency: preserve face, hairstyle, costume and body proportions; no face-swap, wardrobe change or feature blending');
+  if (subject.product) p.push('Subject consistency: product geometry, material, logo and structural details stay fully consistent - no deformation, no added or removed elements');
+  if (subject.scene || p.length === 0) p.push('Scene consistency: space, set dressing and lighting base stay uniform and stable');
+  return p.join('; ') + '.';
+}
+
+// 渐进式镜头微运动（每段不同，避免全程同一句运镜）
+var CAM_MOVES_ZH = ['镜头平滑下移，切至细节特写', '稳定推进至特写，突出主体', '镜头缓移环绕，展现层次', '匀速拉回半全景，均衡收束'];
+var CAM_MOVES_EN = ['the camera glides down to a detail close-up', 'the camera pushes in steadily to a close-up', 'the camera drifts around to reveal layers', 'the camera pulls back smoothly to a balanced half-wide'];
+
+// 中段渐进模板（去掉首尾，中间段依次取用，保证每段内容不同、有推进）
+function midBeatsZh(subject) {
+  if (subject.product) return ['推进至材质与工艺细节特写，突出产品精致质感', '展现核心功能运行瞬间，功能可视化、可感知', '产品自然融入使用场景，与环境或人物呼应', '局部光影扫过主体，强化材质与轮廓'];
+  if (subject.character) return ['人物执行核心动作，情绪渐起', '近景捕捉神态与肢体细节，情绪自然流露', '人物与产品/环境互动，关系明确', '光影勾勒人物轮廓，气质凸显'];
+  return ['环境细节渐次展开，空间层次丰富', '光影流动，氛围自然递进', '前景与背景关系明确，画面有纵深'];
+}
+function midBeatsEn(subject) {
+  if (subject.product) return ['push in to a detail close-up highlighting the product craftsmanship', 'reveal the core function in motion, making it visible and tangible', 'let the product sit naturally in its use scene, echoing people or environment', 'sweep light across the subject to emphasize material and contour'];
+  if (subject.character) return ['the character performs the key action, emotion rising', 'a close shot captures facial expression and body detail, emotion natural', 'the character interacts with product/environment, relation clear', 'light sculpts the character silhouette, temperament highlighted'];
+  return ['environment details unfold gradually, space gains depth', 'light flows, atmosphere builds naturally', 'foreground and background relate clearly, frame has depth'];
+}
+function closeBeatZh(subject) {
+  if (subject.product) return '镜头匀速拉回，产品稳定运行/静置，画面均衡定格，强化产品视觉记忆点';
+  if (subject.character) return '人物状态稳定收束，表情与姿态自然定格';
+  return '镜头稳定落定，空间与氛围完整呈现';
+}
+function closeBeatEn(subject) {
+  if (subject.product) return 'the camera pulls back smoothly, the product runs/idles stably, frame locks balanced, reinforcing the product memory point';
+  if (subject.character) return 'the character settles steadily, expression and posture naturally locked';
+  return 'the camera settles, space and atmosphere fully presented';
+}
+
+// 生成每段（运镜 + 画面）的渐进、不重复内容
+function genBeats(scene, lang, segs, subject) {
+  const isZh = lang === 'zh';
+  let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
+  body = cleanVisualForSpeech((' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim());
+  const CAM_RE = /^\s*the camera\b/i;
+  const CAM_RE2 = /\bcamera (slowly|moves|trucks|pans|tilts|zooms|dollies|tracks|orbits|rotates|continues|holds|stays)\b/i;
+  const sentences = body.split(isZh ? /[。.\n]/ : /(?<=[.。])\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+  const nonCam = sentences.filter(function (s) { return !CAM_RE.test(s) && !CAM_RE2.test(s); });
+  const overview = nonCam[0] || sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
+  const userClauses = nonCam.slice(1);
+  const tpl = isZh ? midBeatsZh(subject) : midBeatsEn(subject);
+  const camMoves = isZh ? CAM_MOVES_ZH : CAM_MOVES_EN;
+  const out = [];
+  for (let i = 0; i < segs.length; i++) {
+    let visual, camera;
+    if (i === 0) {
+      visual = overview;
+      camera = isZh ? (CAM_ZH[(scene.cameraMovement || '').trim()] || '自然运镜') : (scene.cameraMovement || 'the camera moves naturally');
+    } else if (i === segs.length - 1) {
+      visual = isZh ? closeBeatZh(subject) : closeBeatEn(subject);
+      camera = camMoves[Math.min(camMoves.length - 1, i - 1)];
+    } else {
+      let c = userClauses[i - 1];
+      if (!c || c === overview || (out.length && c === out[out.length - 1].visual)) c = tpl[(i - 1) % tpl.length];
+      visual = c;
+      camera = camMoves[(i - 1) % camMoves.length];
+    }
+    out.push({ camera: camera, visual: visual });
+  }
+  return out;
+}
+
 // ========== 结构化分镜简报核心（V2 · 四段式分层输出）==========
 // 遵循 H3 官方指南 + 逐帧实测优化：
 //   每段输出 4 个独立子字段：运镜（完整句）| 画面（含角色细节锁定）| 台词（带说话人标记）| 声音层（三层分离）
@@ -1802,6 +1888,11 @@ function buildShotBriefCore(scene, lang, shotIndex) {
   const segs = [];
   for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
 
+  // 主体类型 + 渐进节拍 + 一致性锁定（修复：纯产品镜头误用“角色锁定”、时间线各段内容重复）
+  const subject = detectSubject(scene, lang);
+  const beats = genBeats(scene, lang, segs, subject);
+  const lock = isZh ? lockClauseZh(subject) : lockClauseEn(subject);
+
   // ---- 构建每段的四字段输出 ----
   var parts = [];
 
@@ -1815,38 +1906,19 @@ function buildShotBriefCore(scene, lang, shotIndex) {
   for (var si = 0; si < segs.length; si++) {
     var seg = segs[si], s = seg[0], e = seg[1];
     var range = fmtSeg(s, e);
-    var content = prog[si] || (prog.length ? prog[si % prog.length] : '')
-      || (isZh ? '\u52a8\u4f5c\u6301\u7eed\u63a8\u8fdb\uff0c\u4e3b\u4f53\u795e\u6001\u4e0e\u59ff\u6001\u53d1\u751f\u53ef\u89c6\u53d8\u5316\uff0c\u60c5\u7eea\u9010\u6b65\u79ef\u7d2f'
-               : 'action continues, expression and posture shift visibly as emotion builds');
+    var content = beats[si].visual;
 
     var block = '';
-    // --- 运镜（完整描述句：仅首段写完整运镜，后续段只写连续运动轻衔接，避免每段重复“camera trucks left”）---
-    if (isZh) {
-      block += (si === 0) ? ('\u8fd0\u955c\uff1a' + camZh + '\u3002') : '\u8fd0\u955c\uff1a\u955c\u5934\u4fdd\u6301\u5e73\u7a33\u8fde\u7eed\u8fd0\u52a8\u3002';
-      if (segs.length > 1) { block += '\u672c\u6bb5\u65f6\u95f4\u8303\u56f4\u4e3a ' + range + '\uff0c'; }
-    } else {
-      var cText = (camEn && /^the camera/i.test(camEn))
-        ? (camEn.charAt(0).toLowerCase() + camEn.slice(1)) : (camEn || 'moves naturally');
-      if (si === 0) {
-        block += 'Camera: ' + cText + '.';
-      } else {
-        block += 'Camera: the camera continues its steady, continuous motion.';
-      }
-      if (segs.length > 1) { block += ' Time range: ' + range + '.'; }
-    }
+    // --- 运镜（每段用渐进式微运动，避免全程同一句运镜）---
+    block += isZh ? ('\u8fd0\u955c\uff1a' + beats[si].camera + '\u3002') : ('Camera: ' + beats[si].camera + '.');
+    if (segs.length > 1) { block += isZh ? ('\u672c\u6bb5\u65f6\u95f4\u8303\u56f4\u4e3a ' + range + '\uff0c') : (' Time range: ' + range + '.'); }
     block += '\n\n';
 
-    // --- 画面（首句概要 + 本段推进 + 角色细节锁定）---
+    // --- 画面（本段推进；一致性锁定见全局头部，避免每段重复）---
     if (isZh) {
-      block += '\u753b\u9762\uff1a';
-      if (si === 0) { block += visualOverview + '\u3002'; }
-      block += content + '\u3002';
-      block += '\n\uff08\u89d2\u8272\u5916\u89c2\u9501\u5b9a\uff1a\u4fdd\u6301\u5f53\u524d\u89d2\u8272\u7684\u4e94\u5b98\u3001\u53d1\u578b\u3001\u670d\u88c5\u3001\u8eab\u6750\u6bd4\u4f8b\u4e0e\u672c\u6bb5\u5f00\u5934\u5b8c\u5168\u4e00\u81f4\uff0c\u4e0d\u5f97\u6362\u8138\u3001\u53d8\u88c5\u6216\u878d\u5408\u4eba\u7269\u7279\u5f81\u3002\uff09';
+      block += '\u753b\u9762\uff1a' + content + '\u3002';
     } else {
-      block += 'Visual: ';
-      if (si === 0) { block += visualOverview + '. '; }
-      block += content + '.';
-      block += '\n(Character lock: preserve face, hairstyle, costume and body proportions exactly as established at the start of this segment. No face-swap, wardrobe change or feature blending.)';
+      block += 'Visual: ' + content + '.';
     }
     block += '\n\n';
 
@@ -2014,23 +2086,27 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const segs = [];
   for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
 
+  // 主体类型 + 渐进节拍（修复：各段内容重复；纯产品镜头误用角色锁定）
+  const enSubject = detectSubject(scene, 'en');
+  const enBeats = genBeats(scene, 'en', segs, enSubject);
+  const enGlobal = '=== Global Style & Consistency ===\n' +
+    'Resolution: 1080p+ (2K), 16:9 aspect ratio.\n' +
+    lockClauseEn(enSubject) + '\n' +
+    'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen.\n\n';
+
   const camEn = scene.cameraMovement || 'the camera moves naturally';
   const camSentence = camEn.charAt(0).toLowerCase() + camEn.slice(1);
   const dialogue = (scene.dialogueLine || '').trim();
   const dialogueSeg = segs.length > 1 ? Math.floor(segs.length / 2) : 0;
 
-  // ---- 组装 integrated_multimodal_description（运镜只在开头声明一次，后续段落只写画面推进，避免机械重复）----
-  const firstContent = prog[0] || (prog.length ? prog[0 % prog.length]
-    : 'the action continues, the subject’s expression and posture shift visibly as the emotion builds.');
+  // ---- 组装 integrated_multimodal_description（运镜在开头声明一次，后续段用渐进式画面推进）----
   const openingClean = opening.replace(/[.\u3002\s]+$/, '');
-  const firstClean = String(firstContent).replace(/[.\u3002\s]+$/, '');
-  let imd = '[Shot 1] ' + openingClean + '. ' + camSentence + ', ' + firstClean + '.';
+  let imd = '[Shot 1] ' + openingClean + '. ' + camSentence + '.';
 
   const extra = [];
   for (let si = 1; si < segs.length; si++) {
     const s = segs[si][0];
-    const content = prog[si] || (prog.length ? prog[si % prog.length]
-      : 'the camera continues its slow, steady motion, the lighting and gesture shift subtly as the moment deepens.');
+    const content = enBeats[si].visual;
     const contentClean = String(content).replace(/[.\u3002\s]+$/, '');
     extra.push('At ' + fmtTimecode(s) + ', ' + contentClean + '.');
   }
@@ -2061,7 +2137,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   // ---- 三字段组装 ----
   const sound = scene.soundscapeEn || 'soft ambient sound continues throughout';
   const music = scene.musicEn || 'N/A';
-  let out = imgRefLine + instruction;
+  let out = enGlobal + imgRefLine + instruction;
   out += 'integrated_multimodal_description: ' + imdFull + '\n\n';
   out += 'overall_soundscape: ' + sound + '\n\n';
   out += 'non_diegetic_music: ' + (/N\/A/i.test(music) ? 'N/A' : music);
@@ -2076,6 +2152,7 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
     return buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene);
   }
   const isZh = lang === 'zh';
+  const subject = detectSubject(scene, lang);
   const dur = scene.duration || 5;
   const imgRefs = buildImageRefLine(refImages, isZh);
   const article = (String(dur).charAt(0) === '8') ? 'an' : 'a';
@@ -2087,9 +2164,10 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
   var globalHeader = '';
   if (isZh) {
     globalHeader =
-      '\n=== 全局风格与角色锁定 ===\n' +
+      '\n=== 全局风格与一致性锁定 ===\n' +
       '分辨率要求：1080p 以上（2K），16:9 画幅。\n' +
-      '角色一致性：画面中所有角色的五官、发型、服装、身材比例必须在本段内保持完全一致，不得换脸、变装或融合人物特征。\n' +
+      lockClauseZh(subject) + '\n' +
+      '视觉质感：写实电影质感，材质细腻真实，光影过渡自然，色调统一高级，无塑料感与过度磨皮。\n' +
       '负面约束：卡通/动漫/Q版/低幼风格；现代服装或现代建筑；塑料皮肤或过度磨皮；模糊面部或五官畸形；嘴型错误或口型不同步；两人同时说话或说话者错误；无关人物开口；人物融合/换脸/变装；多余人物或多余肢体；夸张表演或廉价特效；镜头乱晃或频繁闪烁；画面中出现任何字幕/文字/水印。\n' +
       (refImages && refImages.length ? ('素材锚定：' + refImages.map(function(r,i){ return '<图' + (i+1) + '> = ' + (r.type || '参考') + (r.desc ? ('（' + r.desc + '）') : ''); }).join('；') + '。\n') : '') +
       (refImages && refImages.length ? '参考图使用规则：<Picture 1> 严格作为本段第 0 秒首帧（只参考其外观/服装/构图，不继承多余元素）；<Picture 2> 及之后仅用于建立产品/环境，不照搬其构图。\n' : '');
@@ -2097,7 +2175,7 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
     globalHeader =
       '\n=== Global Style & Character Lock ===\n' +
       'Resolution: 1080p+ (2K), 16:9 aspect ratio.\n' +
-      'Character consistency: All characters must preserve face, hairstyle, costume and body proportions throughout this segment. No face-swap, wardrobe change or feature blending.\n' +
+      lockClauseEn(subject) + '\n' +
       'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen.\n';
   }
   const core = buildShotBriefCore(scene, lang, index);
@@ -2111,8 +2189,12 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
       : ('\n【Continuity】The ending of this shot must seamlessly connect to the opening of the next shot: "' + nextOpening + '". No black frames; use continuous camera motion or a match cut so the final edit flows without jumps.');
   } else {
     tail = isZh
-      ? '\n【收尾】本镜头结尾定格在品牌/产品特写或 Logo，画面稳定、信息清晰，自然收束全片。'
-      : '\n【Closing】End on a stable close-up of the brand/product or logo, clean and readable, naturally closing the film.';
+      ? ('\n【收尾】' + (subject.product
+          ? '本镜头结尾定格在产品稳定运行/静置状态，构图完整均衡，光影均匀柔和，清晰传递产品核心功能与品质感。'
+          : subject.character
+          ? '本镜头结尾人物状态稳定，表情与姿态自然定格，画面干净收束。'
+          : '本镜头结尾镜头稳定落定，空间与氛围完整呈现，自然收束全片。'))
+      : '\n【Closing】End on a stable, readable frame that naturally closes the film.';
   }
 
   return imgRefs + opening + core + (refNote || '') + tail;
