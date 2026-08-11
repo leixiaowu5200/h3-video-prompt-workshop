@@ -15,7 +15,7 @@ const state = {
   formData: {},
   fullRefZh: '',
   fullRefEn: '',
-  lang: 'zh', // 'zh' | 'en'  默认中文，照顾国内用户
+  lang: 'en', // 'zh' | 'en'  默认英文 —— H3 主要识别英文，用户点「中文」切换查看
   productFlow: { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() }
 };
 
@@ -299,6 +299,10 @@ function bindEvents() {
   // 生成按钮
   document.getElementById('generateBtn').addEventListener('click', handleGenerate);
 
+  // 本地重新生成（保持预选条件不变，仅调用本地资料库，不消耗千问 token）
+  const regenBtn = document.getElementById('regenBtn');
+  if (regenBtn) regenBtn.addEventListener('click', regeneratePrompts);
+
   // 导出按钮
   document.getElementById('copyAllBtn').addEventListener('click', handleCopyAll);
   document.getElementById('exportWordBtn').addEventListener('click', handleExportWord);
@@ -558,7 +562,7 @@ function handleGenerate() {
     state.scenes = generateStoryboard(formData);
     renderStoryboard();
     btn.classList.remove('loading');
-    btn.querySelector('span').textContent = '重新生成';
+    btn.querySelector('span').textContent = '🎬 再次生成';
     // 自动保存为一条历史记录
     try {
       addHistory({
@@ -573,6 +577,36 @@ function handleGenerate() {
     }
     showToast('分镜脚本生成完成！已自动保存到历史（也可点 📌收藏 手动保存）');
   }, 600);
+}
+
+// ========== 本地重新生成（不消耗千问 token） ==========
+// 复用当前已生成的 formData（保持用户所有预选条件不变），仅调用本地 generateStoryboard 重新出提示词，
+// 不发起任何 LLM / 千问请求，因此零 token 消耗。常用于对同一配置换一套表达 / 镜头组合。
+function regeneratePrompts() {
+  if (!state.formData || !Object.keys(state.formData).length) {
+    showToast('请先点击「生成提示词与分镜」生成一次', 'warn');
+    return;
+  }
+  const btn = document.getElementById('regenBtn');
+  if (!btn) return;
+  btn.classList.add('loading');
+  const origText = btn.textContent;
+  btn.textContent = '🔄 生成中...';
+  // 纯本地重排：setTimeout 仅给 UI 一个渲染时机，内部不做任何网络请求
+  setTimeout(() => {
+    try {
+      // 保持当前语言（state.lang）不变，复用已有 formData
+      state.scenes = generateStoryboard(state.formData);
+      renderStoryboard();
+      showToast('已本地重新生成（未调用千问，0 token 消耗）');
+    } catch (e) {
+      console.error('[H3] 本地重新生成失败:', e);
+      showToast('重新生成失败：' + (e.message || '未知错误'), 'warn');
+    } finally {
+      btn.classList.remove('loading');
+      btn.textContent = origText;
+    }
+  }, 300);
 }
 
 // ========== 渲染分镜 ==========

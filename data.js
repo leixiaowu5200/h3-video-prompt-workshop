@@ -1896,9 +1896,106 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
 
 // 分镜卡片「直投提示词」专用：H3 标准开头 + 参考图前缀 + 结构化简报（不含 [Shot N] 标记）
 // nextScene：下一镜（用于生成"衔接下一镜开头"指令；末镜传 null 表示收尾）
+// ========== 英文 H3 标准格式（I2VA / T2VA） ==========
+// 严格遵循 MiniMax 官方 h3-prompt-writing Skill：
+//   - 图生视频(I2VA) 正文前加指令行：For the target video, at 0.00 seconds..., <Picture 1> (from [Shot 1]) is fully referenced.
+//   - 三字段：integrated_multimodal_description / overall_soundscape / non_diegetic_music
+//   - integrated_multimodal_description 用 [Shot 1] 开头（无时间码），后续用 At MM:SS.mmm 内联时间码描述运镜推进
+//   - 运镜写成 运动类型+幅度+速度 的自然英文句
+//   - 中文台词用 <d>[Chinese] ... </d> 原样保留（H3 用中文音素读，避免乱码）
+//   - 本地生成，不依赖千问 API（重新生成不耗 token）
+//   - 质量原则融合 script-writing-studio（导演内部 V2.0）：衔接写"可见画面状态"而非管理语言、台词时长闸门（中文 3-5 字/秒）
+function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene) {
+  const dur = scene.duration || 5;
+  const genMode = (typeof state !== 'undefined' && state.formData && state.formData.genMode) || 't2v';
+  const isI2V = genMode === 'i2v';
+  const imgs = (isI2V && Array.isArray(refImages) && refImages.length) ? refImages : [];
+
+  // ---- 指令行（仅 I2VA）----
+  let instruction = '';
+  if (isI2V) {
+    let line = 'For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.';
+    const partial = [];
+    for (let i = 1; i < imgs.length; i++) partial.push('<Picture ' + (i + 1) + '>');
+    if (partial.length) line += ' ' + partial.join(' and ') + ' are partially referenced to establish the product and environment.';
+    instruction = line + '\n\n';
+  }
+
+  // ---- 取英文正文并清理（去掉 [Shot N] 前缀、英文对白整句、残留 <d> 标签）----
+  let body = (scene.visualEnBase || scene.visualEn || '') + '';
+  body = body.replace(/\s*\[Shot\s*\d+\]\s*/gi, ' ').trim();
+  body = body.replace(/The narrator \(S1\)[\s\S]*?lips remain closed\.?/gi, '').trim();
+  body = body.replace(/\(S1\) says[\s\S]*?lips remain closed\.?/gi, '').trim();
+  body = body.replace(/<d>\[English\][\s\S]*?<\/d>/gi, '').trim();
+  body = body.replace(/\s{2,}/g, ' ').trim();
+
+  const sentences = body.split(/(?<=[.。])\s+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  const opening = sentences[0] || 'Live-action, cinematic, a medium shot frames the subject, establishing the scene';
+  const prog = sentences.slice(1);
+
+  // ---- 时间线分段 ----
+  const bounds = splitDuration(dur);
+  const segs = [];
+  for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
+
+  const camEn = scene.cameraMovement || 'the camera moves naturally';
+  const camSentence = camEn.charAt(0).toLowerCase() + camEn.slice(1);
+  const dialogue = (scene.dialogueLine || '').trim();
+  const dialogueSeg = segs.length > 1 ? Math.floor(segs.length / 2) : 0;
+
+  // ---- 组装 integrated_multimodal_description ----
+  const firstContent = prog[0] || (prog.length ? prog[0 % prog.length]
+    : 'the action continues, the subject’s expression and posture shift visibly as the emotion builds.');
+  let imd = '[Shot 1] ' + opening + '. ' + camSentence + ', ' + firstContent + '.';
+
+  const extra = [];
+  for (let si = 1; si < segs.length; si++) {
+    const s = segs[si][0];
+    const content = prog[si] || (prog.length ? prog[si % prog.length]
+      : 'the camera continues its motion, the gesture stays sincere and steady.');
+    extra.push('At ' + fmtTimecode(s) + ', ' + camSentence + ', ' + content + '.');
+  }
+
+  // 对白（中文，<d>[Chinese] ... </d>）
+  if (dialogue) {
+    const dlgClause = ' The off-screen narrator (S1) says in a calm, reassuring voice: <d>[Chinese] ' + dialogue + '</d> while the subject’s lips remain closed.';
+    if (extra.length) {
+      const pos = Math.min(dialogueSeg, extra.length - 1);
+      extra[pos] += dlgClause;
+    } else {
+      imd += dlgClause;
+    }
+  }
+
+  let imdFull = imd;
+  if (extra.length) imdFull += ' ' + extra.join(' ');
+
+  // 衔接 / 收尾（可见画面状态，非管理语言）
+  if (nextScene) {
+    const nextOpening = deriveOpening(nextScene, 'en');
+    imdFull += ' The shot leads seamlessly into the next shot without a cut: "' + nextOpening + '".';
+  } else {
+    imdFull += ' The shot ends on a stable, readable frame that naturally closes the film.';
+  }
+  if (refNote) imdFull += refNote;
+
+  // ---- 三字段组装 ----
+  const sound = scene.soundscapeEn || 'soft ambient sound continues throughout';
+  const music = scene.musicEn || 'N/A';
+  let out = instruction;
+  out += 'integrated_multimodal_description: ' + imdFull + '\n\n';
+  out += 'overall_soundscape: ' + sound + '\n\n';
+  out += 'non_diegetic_music: ' + (/N\/A/i.test(music) ? 'N/A' : music);
+  return out;
+}
+
 // 分镜卡片「直投提示词」专用：H3 标准开头 + 整体场景 + 分段时间线（镜头/相机/音频合并）+ 衔接/收尾
 // nextScene：下一镜（用于生成"衔接下一镜开头"指令；末镜传 null 表示收尾）
 function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene) {
+  // 英文 H3 标准格式（I2VA/T2VA 三字段 + [Shot N] 时间戳 + 中文台词 <d>[Chinese]）
+  if (lang === 'en') {
+    return buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene);
+  }
   const isZh = lang === 'zh';
   const dur = scene.duration || 5;
   const imgRefs = buildImageRefLine(refImages, isZh);
@@ -1914,7 +2011,9 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
       '\n=== 全局风格与角色锁定 ===\n' +
       '分辨率要求：1080p 以上（2K），16:9 画幅。\n' +
       '角色一致性：画面中所有角色的五官、发型、服装、身材比例必须在本段内保持完全一致，不得换脸、变装或融合人物特征。\n' +
-      '负面约束：卡通/动漫/Q版/低幼风格；现代服装或现代建筑；塑料皮肤或过度磨皮；模糊面部或五官畸形；嘴型错误或口型不同步；两人同时说话或说话者错误；无关人物开口；人物融合/换脸/变装；多余人物或多余肢体；夸张表演或廉价特效；镜头乱晃或频繁闪烁；画面中出现任何字幕/文字/水印。\n';
+      '负面约束：卡通/动漫/Q版/低幼风格；现代服装或现代建筑；塑料皮肤或过度磨皮；模糊面部或五官畸形；嘴型错误或口型不同步；两人同时说话或说话者错误；无关人物开口；人物融合/换脸/变装；多余人物或多余肢体；夸张表演或廉价特效；镜头乱晃或频繁闪烁；画面中出现任何字幕/文字/水印。\n' +
+      (refImages && refImages.length ? ('素材锚定：' + refImages.map(function(r,i){ return '<图' + (i+1) + '> = ' + (r.type || '参考') + (r.desc ? ('（' + r.desc + '）') : ''); }).join('；') + '。\n') : '') +
+      (refImages && refImages.length ? '参考图使用规则：<Picture 1> 严格作为本段第 0 秒首帧（只参考其外观/服装/构图，不继承多余元素）；<Picture 2> 及之后仅用于建立产品/环境，不照搬其构图。\n' : '');
   } else {
     globalHeader =
       '\n=== Global Style & Character Lock ===\n' +

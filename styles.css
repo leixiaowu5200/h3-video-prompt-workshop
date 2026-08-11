@@ -1628,6 +1628,24 @@ body::before {
   pointer-events: none;
 }
 
+/* 本地重新生成按钮：与千问优化按钮区分（绿色强调，表示零 token 消耗） */
+.btn-regen {
+  background: linear-gradient(135deg, rgba(86, 196, 145, 0.16), rgba(54, 158, 110, 0.16));
+  border-color: rgba(86, 196, 145, 0.45);
+  color: #4fc68c;
+}
+
+.btn-regen:hover {
+  border-color: #4fc68c;
+  background: rgba(86, 196, 145, 0.24);
+  color: #66e0a3;
+}
+
+.btn-export.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 /* ========== 混元设置弹窗提示 ========== */
 .qwen-modal {
   max-width: 560px;
