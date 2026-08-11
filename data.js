@@ -427,12 +427,12 @@ const STYLE_ZH = {
 
 // ========== 画幅比例 ==========
 const ASPECT_RATIOS = {
-  '16:9': { name: '16:9 横屏', desc: '标准宽屏，适合宣传片、广告', h3Value: '16:9' },
-  '9:16': { name: '9:16 竖屏', desc: '手机短视频，适合抖音/快手', h3Value: '9:16' },
-  '21:9': { name: '21:9 超宽', desc: '电影级宽幅，适合大屏展示', h3Value: '21:9' },
-  '1:1': { name: '1:1 方形', desc: '社交媒体方图视频', h3Value: '1:1' },
-  '4:3': { name: '4:3 传统', desc: '传统电视比例', h3Value: '4:3' },
-  '3:4': { name: '3:4 竖版', desc: '海报式竖版视频', h3Value: '3:4' }
+  '16:9': { name: '16:9 横屏', desc: '标准宽屏，适合宣传片、广告', h3Value: '16:9', pixels: '1920×1080（1080p）、1280×720（720p）、3840×2160（4K）' },
+  '9:16': { name: '9:16 竖屏', desc: '手机短视频，适合抖音/快手', h3Value: '9:16', pixels: '1080×1920、720×1280、2160×3840' },
+  '21:9': { name: '21:9 超宽', desc: '电影级宽幅，适合大屏展示', h3Value: '21:9', pixels: '2560×1080、3440×1440（带鱼屏）、3840×1600' },
+  '1:1': { name: '1:1 方形', desc: '社交媒体方图视频', h3Value: '1:1', pixels: '1080×1080、720×720、1440×1440' },
+  '4:3': { name: '4:3 传统', desc: '传统电视比例', h3Value: '4:3', pixels: '1440×1080、960×720、1920×1440' },
+  '3:4': { name: '3:4 竖版', desc: '海报式竖版视频', h3Value: '3:4', pixels: '1080×1440、810×1080、1440×1920' }
 };
 
 // ========== 镜头运动词汇库 ==========
@@ -1738,8 +1738,11 @@ function buildShotBriefCore(scene, lang, shotIndex) {
 
   // 按句拆分：首句作"整体场景/画面概要"，其余句作为时间线推进内容
   const sentences = body.split(/[。.\n]/).map(function(s){ return s.trim(); }).filter(Boolean);
-  const visualOverview = sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
-  const prog = sentences.slice(1);
+  const CAM_RE = /^\s*the camera\b/i;
+  const CAM_RE2 = /\bcamera (slowly|moves|trucks|pans|tilts|zooms|dollies|tracks|orbits|rotates|continues|holds|stays)\b/i;
+  const nonCam = sentences.filter(function(s){ return !CAM_RE.test(s) && !CAM_RE2.test(s); });
+  const visualOverview = nonCam[0] || sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
+  const prog = nonCam.slice(1);
 
   // 细分时间线（覆盖完整时长，无缺口）
   const bounds = splitDuration(dur);
@@ -1764,14 +1767,18 @@ function buildShotBriefCore(scene, lang, shotIndex) {
                : 'action continues, expression and posture shift visibly as emotion builds');
 
     var block = '';
-    // --- 运镜（完整描述句）---
+    // --- 运镜（完整描述句：仅首段写完整运镜，后续段只写连续运动轻衔接，避免每段重复“camera trucks left”）---
     if (isZh) {
-      block += '\u8fd0\u955c\uff1a' + camZh + '\u3002';
+      block += (si === 0) ? ('\u8fd0\u955c\uff1a' + camZh + '\u3002') : '\u8fd0\u955c\uff1a\u955c\u5934\u4fdd\u6301\u5e73\u7a33\u8fde\u7eed\u8fd0\u52a8\u3002';
       if (segs.length > 1) { block += '\u672c\u6bb5\u65f6\u95f4\u8303\u56f4\u4e3a ' + range + '\uff0c'; }
     } else {
       var cText = (camEn && /^the camera/i.test(camEn))
         ? (camEn.charAt(0).toLowerCase() + camEn.slice(1)) : (camEn || 'moves naturally');
-      block += 'Camera: ' + cText + '.';
+      if (si === 0) {
+        block += 'Camera: ' + cText + '.';
+      } else {
+        block += 'Camera: the camera continues its steady, continuous motion.';
+      }
       if (segs.length > 1) { block += ' Time range: ' + range + '.'; }
     }
     block += '\n\n';
@@ -1861,6 +1868,14 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
   body = (' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
   // ★ 无论是否提供台词，始终清理 <d> 标签、英文括号、引导语等噪声
   body = cleanVisualForSpeech(body);
+  // 剔除正文中自带的纯运镜句，避免与下方结构化简报的 Camera 行重复、也避免运镜被写多遍
+  if (!isZh) {
+    const CAM_REb = /^\s*the camera\b/i;
+    const CAM_RE2b = /\bcamera (slowly|moves|trucks|pans|tilts|zooms|dollies|tracks|orbits|rotates|continues|holds|stays)\b/i;
+    const clausesB = body.split(/(?<=[.。])\s+/).map(function(s){ return s.trim(); }).filter(Boolean);
+    const nonCamB = clausesB.filter(function(s){ return !CAM_REb.test(s) && !CAM_RE2b.test(s); });
+    if (nonCamB.length) body = nonCamB.join('. ') + '.';
+  }
 
   const tc = index === 0 ? '' : (fmtTimecode(startSec) + ', ');
   const includeMarker = !(opts && opts.includeMarker === false);
@@ -1911,6 +1926,10 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const isI2V = genMode === 'i2v';
   const imgs = (isI2V && Array.isArray(refImages) && refImages.length) ? refImages : [];
 
+  // I2VA：在绝对开头输出「@Image1 as 人物参考@Image2 as 产品参考@Image3 as 场景参考」前缀，
+  // 明确告诉 H3 每一张参考图是什么，强锚定主体/产品/环境，避免生成结果与参考图无关
+  const imgRefLine = imgs.length ? (buildImageRefLine(imgs, false) + '\n') : '';
+
   // ---- 指令行（仅 I2VA）----
   let instruction = '';
   if (isI2V) {
@@ -1930,8 +1949,12 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   body = body.replace(/\s{2,}/g, ' ').trim();
 
   const sentences = body.split(/(?<=[.。])\s+/).map(function(s){ return s.trim(); }).filter(Boolean);
-  const opening = sentences[0] || 'Live-action, cinematic, a medium shot frames the subject, establishing the scene';
-  const prog = sentences.slice(1);
+  // 剔除正文中自带、与 camSentence 重复的纯运镜句，避免「camera slowly trucks left」被写 4 遍 / 首尾重复加倍
+  const CAM_RE = /^\s*the camera\b/i;
+  const CAM_RE2 = /\bcamera (slowly|moves|trucks|pans|tilts|zooms|dollies|tracks|orbits|rotates|continues|holds|stays)\b/i;
+  const nonCam = sentences.filter(function(s){ return !CAM_RE.test(s) && !CAM_RE2.test(s); });
+  const opening = nonCam[0] || sentences[0] || 'Live-action, cinematic, a medium shot frames the subject, establishing the scene';
+  const prog = nonCam.slice(1);
 
   // ---- 时间线分段 ----
   const bounds = splitDuration(dur);
@@ -1943,17 +1966,20 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const dialogue = (scene.dialogueLine || '').trim();
   const dialogueSeg = segs.length > 1 ? Math.floor(segs.length / 2) : 0;
 
-  // ---- 组装 integrated_multimodal_description ----
+  // ---- 组装 integrated_multimodal_description（运镜只在开头声明一次，后续段落只写画面推进，避免机械重复）----
   const firstContent = prog[0] || (prog.length ? prog[0 % prog.length]
     : 'the action continues, the subject’s expression and posture shift visibly as the emotion builds.');
-  let imd = '[Shot 1] ' + opening + '. ' + camSentence + ', ' + firstContent + '.';
+  const openingClean = opening.replace(/[.\u3002\s]+$/, '');
+  const firstClean = String(firstContent).replace(/[.\u3002\s]+$/, '');
+  let imd = '[Shot 1] ' + openingClean + '. ' + camSentence + ', ' + firstClean + '.';
 
   const extra = [];
   for (let si = 1; si < segs.length; si++) {
     const s = segs[si][0];
     const content = prog[si] || (prog.length ? prog[si % prog.length]
-      : 'the camera continues its motion, the gesture stays sincere and steady.');
-    extra.push('At ' + fmtTimecode(s) + ', ' + camSentence + ', ' + content + '.');
+      : 'the camera continues its slow, steady motion, the lighting and gesture shift subtly as the moment deepens.');
+    const contentClean = String(content).replace(/[.\u3002\s]+$/, '');
+    extra.push('At ' + fmtTimecode(s) + ', ' + contentClean + '.');
   }
 
   // 对白（中文，<d>[Chinese] ... </d>）
@@ -1982,7 +2008,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   // ---- 三字段组装 ----
   const sound = scene.soundscapeEn || 'soft ambient sound continues throughout';
   const music = scene.musicEn || 'N/A';
-  let out = instruction;
+  let out = imgRefLine + instruction;
   out += 'integrated_multimodal_description: ' + imdFull + '\n\n';
   out += 'overall_soundscape: ' + sound + '\n\n';
   out += 'non_diegetic_music: ' + (/N\/A/i.test(music) ? 'N/A' : music);
@@ -2099,21 +2125,36 @@ function buildFullReference(scenes, formData, lang) {
   for (let i = 0; i < n; i++) { starts.push(acc); acc += scenes[i].duration; }
   const shotRange = n > 1 ? '[Shot 1] to [Shot ' + n + ']' : '[Shot 1]';
 
-  // ---- subject_definitions ----
+  // ---- subject_definitions ----（对齐豆包 Ref2VA：明确把参考图绑定到主体/产品/首帧构图）
   let subjects = '<Subject 1> is the brand protagonist representing "' + brand + '", whose brand identity, wardrobe, on-screen logo and tagline (' +
-    (slogan ? '"' + slogan + '"' : 'as specified by user') + ') must remain fully consistent and unchanged across every shot.\n';
+    (slogan ? '"' + slogan + '"' : 'as specified by user') + ') must remain fully consistent and unchanged across every shot.';
+  if (isI2V && refImages.length >= 1) {
+    subjects += ' Facial identity, hairstyle, wardrobe and body proportions come from <Reference Image 1>.';
+  }
+  subjects += '\n';
   if (product) {
-    subjects += '<Subject 2> is the core product/service: ' + product + '. Its geometry, material, label text, logo placement and structural details remain fully preserved across every angle.\n';
+    let prodLine = '<Subject 2> is the core product/service: ' + product + '. Its geometry, material, label text, logo placement and structural details remain fully preserved across every angle.';
+    if (isI2V && refImages.length >= 2) {
+      prodLine += ' Geometric structure, logo and surface material come from <Reference Image 2>.';
+    }
+    subjects += prodLine + '\n';
   }
   if (isI2V) {
     refImages.forEach((r, k) => {
       const num = k + 1;
-      const typeZh = r.type || '参考';
       const desc = r.desc || (isZh ? '用户提供的参考图' : 'user-provided reference image');
       if (isZh) {
-        subjects += '<参考图' + num + '> 是用户提供的参考图（类型：' + typeZh + '）：' + desc + '。作为视觉参考，用于在全片中保持对应主体/元素外观与参考图一致。\n';
+        let note = '<参考图' + num + '> 是用户提供的参考图（类型：' + (r.type || '参考') + '）：' + desc + '。';
+        if (num === 1) note += '作为人物/角色外观锚点（面孔、发型、服装、身材比例），<Subject 1> 身份与外观来自此图。';
+        else if (num === 2 && product) note += '作为产品/设备几何与材质锚点（结构、Logo、文字、表面材质），<Subject 2> 来自此图。';
+        else note += '作为首帧构图与环境锚点（景别、机位、背景布局）。';
+        subjects += note + '\n';
       } else {
-        subjects += '<Reference Image ' + num + '> is a user-provided reference image (type: ' + refTypeEn(r.type) + '): ' + desc + '. Used as the visual reference to keep the corresponding subject/element consistent with this image throughout the video.\n';
+        let note = '<Reference Image ' + num + '> is a user-provided reference image (type: ' + refTypeEn(r.type) + '): ' + desc + '. ';
+        if (num === 1) note += 'It is the appearance anchor for <Subject 1> (face, hairstyle, wardrobe, body proportions). ';
+        else if (num === 2 && product) note += 'It is the geometry/material anchor for <Subject 2> (structure, logo, text, surface material). ';
+        else note += 'It is the first-frame composition and environment anchor for [Shot 1] (shot size, camera angle, background layout). ';
+        subjects += note + '\n';
       }
     });
   }
@@ -2185,7 +2226,9 @@ function buildFullReference(scenes, formData, lang) {
   scenes.forEach((s) => { music += (isZh ? s.musicZh : s.musicEn) + ' '; });
   music = music.trim() || 'N/A';
 
-  return 'subject_definitions:\n' + subjects +
+  // I2VA：绝对开头用 @Image1 as 角色@Image2 as 产品@Image3 as 场景 绑定上传的参考图（H3 网页端图生视频靠此前缀定位每张图）
+  const i2vPrefix = isI2V ? (buildImageRefLine(refImages, false) + '\n') : '';
+  return i2vPrefix + 'subject_definitions:\n' + subjects +
     '\nsummary:\n' + summary +
     '\nretention_analysis:\n' + retention +
     '\ndetailed_description:\n' + dd +

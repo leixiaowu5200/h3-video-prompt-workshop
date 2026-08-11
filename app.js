@@ -254,7 +254,7 @@ function renderStyles() {
 function renderRatios() {
   const grid = document.getElementById('ratioGrid');
   grid.innerHTML = Object.entries(ASPECT_RATIOS).map(([key, ratio]) => `
-    <div class="ratio-card ${key === state.selectedRatio ? 'active' : ''}" data-ratio="${key}" title="${ratio.desc}">
+    <div class="ratio-card ${key === state.selectedRatio ? 'active' : ''}" data-ratio="${key}" data-pixels="${ratio.pixels}" title="${ratio.name}｜常见分辨率：${ratio.pixels}">
       ${key}
     </div>
   `).join('');
