@@ -40,24 +40,101 @@ function init() {
   updateOptCountUI(getOptimizeCount());
 }
 
+// ========== 通用点击展开选择器 ==========
+function makeFieldSelect(mountId, opts) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+  const items = opts.items;
+  const activeItem = items.find(i => i.value === opts.activeValue) || items[0];
+  mount.className = 'field-select';
+  mount.innerHTML =
+    '<button type="button" class="field-select-trigger" aria-expanded="false">' +
+      (activeItem.icon ? '<span class="fs-trigger-icon">' + activeItem.icon + '</span>' : '') +
+      '<span class="fs-trigger-text">' +
+        '<span class="fs-trigger-label"></span>' +
+        (activeItem.desc ? '<span class="fs-trigger-desc"></span>' : '') +
+      '</span>' +
+      '<span class="fs-trigger-chevron">▾</span>' +
+    '</button>' +
+    '<div class="field-select-panel">' +
+      items.map(i =>
+        '<button type="button" class="fs-option ' + (i.value === opts.activeValue ? 'active' : '') + '" data-value="' + i.value + '">' +
+          (i.icon ? '<span class="fs-opt-icon">' + i.icon + '</span>' : '') +
+          '<span class="fs-opt-text">' +
+            '<span class="fs-opt-name"></span>' +
+            (i.desc ? '<span class="fs-opt-desc"></span>' : '') +
+          '</span>' +
+          (i.extra ? '<span class="fs-opt-extra"></span>' : '') +
+          '<span class="fs-opt-check">✓</span>' +
+        '</button>'
+      ).join('') +
+    '</div>';
+
+  // 填充文本（避免 innerHTML 注入风险）
+  const trigger = mount.querySelector('.field-select-trigger');
+  const panel = mount.querySelector('.field-select-panel');
+  mount.querySelector('.fs-trigger-label').textContent = activeItem.name;
+  if (activeItem.desc) mount.querySelector('.fs-trigger-desc').textContent = activeItem.desc;
+  panel.querySelectorAll('.fs-option').forEach((opt, idx) => {
+    const item = items[idx];
+    opt.querySelector('.fs-opt-name').textContent = item.name;
+    if (item.desc) opt.querySelector('.fs-opt-desc').textContent = item.desc;
+    if (item.extra) opt.querySelector('.fs-opt-extra').textContent = item.extra;
+  });
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = mount.classList.toggle('open');
+    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      document.querySelectorAll('.field-select.open').forEach(f => {
+        if (f !== mount) {
+          f.classList.remove('open');
+          const t = f.querySelector('.field-select-trigger');
+          if (t) t.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  });
+
+  panel.querySelectorAll('.fs-option').forEach(opt => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const val = opt.dataset.value;
+      panel.querySelectorAll('.fs-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      const item = items.find(i => String(i.value) === String(val));
+      const iconEl = mount.querySelector('.fs-trigger-icon');
+      const labelEl = mount.querySelector('.fs-trigger-label');
+      const descEl = mount.querySelector('.fs-trigger-desc');
+      if (iconEl) iconEl.textContent = item.icon || '';
+      if (labelEl) labelEl.textContent = item.name;
+      if (descEl) descEl.textContent = item.desc || '';
+      mount.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+      if (typeof opts.onSelect === 'function') opts.onSelect(val);
+    });
+  });
+}
+
+// 点击空白处关闭所有展开的选择器
+document.addEventListener('click', () => {
+  document.querySelectorAll('.field-select.open').forEach(f => {
+    f.classList.remove('open');
+    const t = f.querySelector('.field-select-trigger');
+    if (t) t.setAttribute('aria-expanded', 'false');
+  });
+});
+
 // ========== 渲染视频类型 ==========
 function renderVideoTypes() {
-  const grid = document.getElementById('videoTypeGrid');
-  grid.innerHTML = Object.entries(VIDEO_TYPES).map(([key, type]) => `
-    <div class="type-card ${key === state.selectedVideoType ? 'active' : ''}" data-type="${key}">
-      <div class="icon">${type.icon}</div>
-      <div class="name">${type.name}</div>
-      <div class="desc">${type.desc}</div>
-    </div>
-  `).join('');
-
-  grid.querySelectorAll('.type-card').forEach(card => {
-    card.addEventListener('click', () => {
-      grid.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      state.selectedVideoType = card.dataset.type;
-      onVideoTypeChange();
-    });
+  const items = Object.entries(VIDEO_TYPES).map(([key, t]) => ({
+    value: key, icon: t.icon, name: t.name, desc: t.desc
+  }));
+  makeFieldSelect('videoTypeField', {
+    items,
+    activeValue: state.selectedVideoType,
+    onSelect: (val) => { state.selectedVideoType = val; onVideoTypeChange(); }
   });
 }
 
@@ -234,55 +311,39 @@ function initTheme() {
 
 // ========== 渲染风格 ==========
 function renderStyles() {
-  const grid = document.getElementById('styleGrid');
-  grid.innerHTML = Object.entries(STYLES).map(([key, style]) => `
-    <div class="style-card ${key === state.selectedStyle ? 'active' : ''}" data-style="${key}">
-      ${style.name}
-    </div>
-  `).join('');
-
-  grid.querySelectorAll('.style-card').forEach(card => {
-    card.addEventListener('click', () => {
-      grid.querySelectorAll('.style-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      state.selectedStyle = card.dataset.style;
-    });
+  const items = Object.entries(STYLES).map(([key, s]) => ({
+    value: key, name: s.name, desc: s.nameEn
+  }));
+  makeFieldSelect('styleField', {
+    items,
+    activeValue: state.selectedStyle,
+    onSelect: (val) => { state.selectedStyle = val; }
   });
 }
 
 // ========== 渲染画幅 ==========
 function renderRatios() {
-  const grid = document.getElementById('ratioGrid');
-  grid.innerHTML = Object.entries(ASPECT_RATIOS).map(([key, ratio]) => `
-    <div class="ratio-card ${key === state.selectedRatio ? 'active' : ''}" data-ratio="${key}" data-pixels="${ratio.pixels}" title="${ratio.name}｜常见分辨率：${ratio.pixels}">
-      ${key}
-    </div>
-  `).join('');
-
-  grid.querySelectorAll('.ratio-card').forEach(card => {
-    card.addEventListener('click', () => {
-      grid.querySelectorAll('.ratio-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      state.selectedRatio = card.dataset.ratio;
-    });
+  const items = Object.entries(ASPECT_RATIOS).map(([key, r]) => ({
+    value: key, name: key, desc: r.desc, extra: r.pixels
+  }));
+  makeFieldSelect('ratioField', {
+    items,
+    activeValue: state.selectedRatio,
+    onSelect: (val) => { state.selectedRatio = val; }
   });
 }
 
-// 单镜头时长选择（10 秒 / 15 秒）
+// 单镜头时长选择（5 / 10 / 15 秒）
 function renderDurations() {
-  const grid = document.getElementById('durationGrid');
-  if (!grid) return;
-  grid.innerHTML = Array.from(grid.querySelectorAll('.duration-card')).map(card => {
-    const dur = parseInt(card.dataset.dur, 10);
-    return `<div class="duration-card ${dur === state.shotDur ? 'active' : ''}" data-dur="${dur}">${card.textContent.trim()}</div>`;
-  }).join('');
-
-  grid.querySelectorAll('.duration-card').forEach(card => {
-    card.addEventListener('click', () => {
-      grid.querySelectorAll('.duration-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      state.shotDur = parseInt(card.dataset.dur, 10);
-    });
+  const items = [
+    { value: 5, name: '5 秒', desc: '短镜头，适合快节奏 / 信息密集' },
+    { value: 10, name: '10 秒', desc: '适中，平衡信息与节奏' },
+    { value: 15, name: '15 秒（推荐）', desc: 'H3 单次生成上限，内容最完整' }
+  ];
+  makeFieldSelect('durationField', {
+    items,
+    activeValue: state.shotDur,
+    onSelect: (val) => { state.shotDur = parseInt(val, 10); }
   });
 }
 

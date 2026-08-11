@@ -212,7 +212,7 @@ body::before {
 }
 
 .form-group {
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
@@ -277,7 +277,176 @@ body::before {
   color: var(--text-primary);
 }
 
-/* 视频类型卡片网格 */
+/* ========== Field Select（点击展开选择器） ========== */
+.field-select {
+  position: relative;
+}
+
+.field-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  text-align: left;
+}
+
+.field-select-trigger:hover {
+  border-color: var(--border-hover);
+}
+
+.field-select.open .field-select-trigger,
+.field-select-trigger:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  outline: none;
+}
+
+.fs-trigger-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.fs-trigger-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fs-trigger-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fs-trigger-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-trigger-chevron {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.field-select.open .fs-trigger-chevron {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.field-select-panel {
+  display: none;
+  margin-top: 6px;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  max-height: 264px;
+  overflow-y: auto;
+}
+
+.field-select.open .field-select-panel {
+  display: block;
+  animation: fsFade 0.18s ease;
+}
+
+@keyframes fsFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fs-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: var(--transition);
+  font-size: 13px;
+  font-family: var(--font-sans);
+}
+
+.fs-option:hover {
+  background: var(--bg-card-hover);
+}
+
+.fs-option.active {
+  background: var(--accent-glow);
+}
+
+.fs-opt-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.fs-opt-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fs-opt-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.fs-opt-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-opt-extra {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  max-width: 150px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-opt-check {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0;
+}
+
+.fs-option.active .fs-opt-check {
+  opacity: 1;
+}
+
+/* 视频类型卡片网格（已废弃，由 .field-select 取代） */
 .video-type-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
