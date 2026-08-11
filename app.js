@@ -622,13 +622,7 @@ function collectFormData() {
 function handleGenerate() {
   const formData = collectFormData();
 
-  // 验证必填项
-  if (!formData.brandName) {
-    showToast('请填写企业/品牌名称', 'warn');
-    document.getElementById('brandName').focus();
-    return;
-  }
-
+  // 验证必填项（企业/品牌名称已改为选填：填了会用于画面文字与画外音宣传，不填则围绕其他选项生成）
   if (!formData.industry) {
     showToast('请选择行业领域', 'warn');
     document.getElementById('industry').focus();
@@ -742,7 +736,7 @@ function renderProjectSummary() {
   summary.innerHTML = `
     <div class="summary-item"><span class="label">类型</span><span class="value">${vt.name}</span></div>
     <div class="divider"></div>
-    <div class="summary-item"><span class="label">品牌</span><span class="value">${f.brandName}</span></div>
+    <div class="summary-item"><span class="label">品牌</span><span class="value">${f.brandName || '（选填·未填）'}</span></div>
     <div class="divider"></div>
     <div class="summary-item"><span class="label">行业</span><span class="value">${ind?.name || '-'}</span></div>
     <div class="divider"></div>

@@ -1052,8 +1052,59 @@ const SCENE_TEMPLATES = {
  * @param {Object} scene - 场景模板
  * @returns {Object} { prompt, sceneData }
  */
+// ========== 品牌选填：未填品牌时清理残留的空品牌文字 ==========
+// 当未填写企业/品牌名称时，画面文字与画外音中不应出现任何假名（如 YourBrand）。
+// 仅在不填品牌时调用：移除含空品牌名的画面文字片段，并清理因品牌为空产生的多余空格。
+function stripInactiveBrandVisual(text) {
+  if (!text) return text;
+  // —— 英文：整句/整段移除含空品牌名（""）的画面文字 ——
+  const en = [
+    /A large elegant text overlay reading ""[^.]*\./g,
+    /A clean text overlay reading ""[^.]*\./g,
+    /A subtle text overlay reading ""[^.]*\./g,
+    /A bold text overlay reading ""[^.]*\./g,
+    /The "" logo animates into view[^.]*\./g,
+    /The "" logo appears at [^.]*\./g,
+    /On-screen, a plain, understated title reads ""\./g,
+    /Bold on-screen text reads ""[^.]*\./g,
+    /bold text overlays: ""[^.]*\./g,
+    / — ""/g // 仅去掉空品牌名，保留其后的 slogan / tagline
+  ];
+  // —— 中文：移除含空品牌名（""）的画面文字片段 ——
+  const zh = [
+    /[^，。、]*品牌名""，/g,
+    /[^，。、]*品牌名""。/g,
+    /[^，。、]*""标志[^，。]*[。，]/g,
+    /[^，。、]*出现""标志[。，]?/g,
+    /[^，。、]*呈现""标志[。，]?/g,
+    /[^，。、]*显示""[。，]?/g,
+    /[^，。、]*打出""，/g,
+    /——""/g
+  ];
+  en.forEach(function (p) { text = text.replace(p, ''); });
+  zh.forEach(function (p) { text = text.replace(p, ''); });
+  // 收尾：清理残留空格、重复标点（含 <d> 画外音内因空品牌产生的多余空格）
+  text = text
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+\./g, '.')
+    .replace(/\.{2,}/g, '.')
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*\./g, '.')
+    .replace(/\s+，/g, '，')
+    .replace(/，\s*。/g, '。')
+    .replace(/\s+。/g, '。')
+    .replace(/“\s*”/g, '“”') // 兜底：空中文引号
+    .trim();
+  return text;
+}
+
 function generateScenePrompt(ctx, scene) {
   const result = scene.generate(ctx);
+
+  // 品牌选填：未填品牌时，清理画面/画外音中残留的空品牌文字与多余空格
+  if (!ctx.hasBrand) {
+    result.visual = stripInactiveBrandVisual(result.visual);
+  }
 
   // 风格叙事DNA：搞笑/剧情反转等风格会在每场戏注入专属叙事 flavor
   // （纯净版：未追加 flavor，供整片六段式只注入一次使用）
@@ -1076,6 +1127,7 @@ function generateScenePrompt(ctx, scene) {
     || (typeof ZH_TWIST_SCENES !== 'undefined' && ZH_TWIST_SCENES[scene.id]);
   if (zhTpl) {
     visualZh = zhTpl.visual(ctx);
+    if (!ctx.hasBrand) visualZh = stripInactiveBrandVisual(visualZh);
     visualZhBase = visualZh;
     soundscapeZh = zhTpl.soundscape(ctx);
     musicZh = zhTpl.music(ctx);
@@ -1136,7 +1188,8 @@ function buildContext(formData) {
   return {
     // 基本信息
     videoType: formData.videoType || 'corporate',
-    brand: formData.brandName || 'YourBrand',
+    brand: formData.brandName || '',
+    hasBrand: !!formData.brandName,
     product: formData.productDesc || '',
     slogan: formData.slogan || '',
     audience: formData.audience || '',
@@ -1386,7 +1439,7 @@ const TWIST_SCENE_TEMPLATES = [
     voiceover: true,
     directorNote: '用反转后的新认知重新收束，品牌LOGO+Slogan+CTA，落版有力。',
     generate(ctx) {
-      const cta = ctx.ctaText || ('Discover the truth at ' + ctx.brand);
+      const cta = ctx.ctaText || (ctx.hasBrand ? ('Discover the truth at ' + ctx.brand) : 'Discover the truth');
       const slogan = ctx.slogan || 'Look closer. The truth was there all along.';
       return {
         visual: `[Shot 1] ${ctx.styleKeywords}, a clean logo lockup settles center frame — "${ctx.brand}" with the tagline "${slogan}" beneath it — now charged with new meaning after the twist. Slow, confident settle; ${ctx.colorGrading}. On-screen CTA reads "${cta}". The narrator (S1) closes with the slogan: <d>[English] ${slogan}</d>`,
@@ -2107,7 +2160,8 @@ function buildFullReference(scenes, formData, lang) {
   // 风格叙事DNA + 行业叙事DNA：整片只注入一次（置于 detailed_description 顶部），避免每个镜头重复
   const globalZh = [st.narrativeFlavorZh, industryData && industryData.industryNarrativeZh].filter(Boolean).join(' ');
   const globalEn = [st.narrativeFlavor, industryData && industryData.industryNarrative].filter(Boolean).join(' ');
-  const brand = formData.brandName || 'YourBrand';
+  const hasBrand = !!formData.brandName;
+  const brand = formData.brandName || '';
   const product = formData.productDesc || '';
   const slogan = formData.slogan || '';
   const ratio = formData.aspectRatio || '16:9';
@@ -2126,8 +2180,17 @@ function buildFullReference(scenes, formData, lang) {
   const shotRange = n > 1 ? '[Shot 1] to [Shot ' + n + ']' : '[Shot 1]';
 
   // ---- subject_definitions ----（对齐豆包 Ref2VA：明确把参考图绑定到主体/产品/首帧构图）
-  let subjects = '<Subject 1> is the brand protagonist representing "' + brand + '", whose brand identity, wardrobe, on-screen logo and tagline (' +
-    (slogan ? '"' + slogan + '"' : 'as specified by user') + ') must remain fully consistent and unchanged across every shot.';
+  let subjects;
+  if (hasBrand) {
+    subjects = '<Subject 1> is the brand protagonist representing "' + brand + '", whose brand identity, wardrobe, on-screen logo and tagline (' +
+      (slogan ? '"' + slogan + '"' : 'as specified by user') + ') must remain fully consistent and unchanged across every shot.';
+  } else {
+    // 未填品牌：主体围绕产品/行业/参考图，不写任何假名
+    const subjLabel = product || (industryData && industryData.name) || 'the main subject';
+    subjects = '<Subject 1> is the main subject of the video — ' + subjLabel +
+      (slogan ? (', with the on-screen tagline "' + slogan + '"') : '') +
+      ' — whose appearance, wardrobe and on-screen text must remain fully consistent and unchanged across every shot.';
+  }
   if (isI2V && refImages.length >= 1) {
     subjects += ' Facial identity, hairstyle, wardrobe and body proportions come from <Reference Image 1>.';
   }
@@ -2165,14 +2228,17 @@ function buildFullReference(scenes, formData, lang) {
     const refDescZh = refImages.map((r, k) => '图' + (k + 1) + (r.type ? '（' + r.type + '）' : '')).join('、');
     const refDescEn = refImages.map((r, k) => 'Image ' + (k + 1) + (r.type ? ' (' + refTypeEn(r.type) + ')' : '')).join(', ');
     if (isZh) {
-      summary = '[图生视频生成] 目标视频基于用户提供的 ' + refImages.length + ' 张参考图（' + refDescZh + '）生成，是一部 ' + vt.name + '（品牌 ' + brand + '，' + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。以参考图为准保持主体外观一致，生成后于后期拼接成片。\n';
+      const brandSegZh = hasBrand ? ('品牌 ' + brand + '，') : '';
+      summary = '[图生视频生成] 目标视频基于用户提供的 ' + refImages.length + ' 张参考图（' + refDescZh + '）生成，是一部 ' + vt.name + '（' + brandSegZh + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。以参考图为准保持主体外观一致，生成后于后期拼接成片。\n';
     } else {
-      summary = '[image-to-video generation] The target video is generated from ' + refImages.length + ' user-provided reference images (' + refDescEn + '), as a ' + vt.nameEn + ' for ' + brand + ' in ' + st.nameEn +
+      const brandSegEn = hasBrand ? (' for ' + brand) : '';
+      summary = '[image-to-video generation] The target video is generated from ' + refImages.length + ' user-provided reference images (' + refDescEn + '), as a ' + vt.nameEn + brandSegEn + ' in ' + st.nameEn +
         ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
         '). Visual identity must match the reference images; generated as one connected storyboard and edited together in post-production.\n';
     }
   } else {
-    summary = '[reference generation] The target video is a ' + (isZh ? vt.name : vt.nameEn) + ' for ' + brand + ' in ' + (isZh ? st.name : st.nameEn) +
+    const brandSegRef = hasBrand ? (' for ' + brand) : '';
+    summary = '[reference generation] The target video is a ' + (isZh ? vt.name : vt.nameEn) + brandSegRef + ' in ' + (isZh ? st.name : st.nameEn) +
       ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
       '). Primary reference is the user-specified brand, product and visual style, to be generated as one connected storyboard and edited together in post-production.\n';
   }

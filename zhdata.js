@@ -545,7 +545,7 @@ const ZH_TWIST_SCENES = {
   twist_payoff: {
     visual(ctx) {
       const slogan = ctx.slogan || '看仔细点。真相一直都在。';
-      const cta = ctx.ctaText || ('到 ' + ctx.brand + ' 看见真相');
+      const cta = ctx.ctaText || (ctx.hasBrand ? ('到 ' + ctx.brand + ' 看见真相') : '看见真相');
       return `[镜头1] ${ctx.styleKeywordsZh}，一个干净的 logo lockup 居中定格——"${ctx.brand}"下方一行 slogan"${slogan}"——反转之后，这行字被赋予了全新含义。镜头缓慢、自信地落定；${ctx.colorGradingZh}。画面下方打出 CTA："${cta}"。画外音（S1）以 slogan 收尾：<d>[中文] ${slogan}</d>，画面中不出现人物嘴唇。`;
     },
     soundscape() {
