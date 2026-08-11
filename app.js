@@ -742,7 +742,7 @@ function renderProjectSummary() {
     <div class="divider"></div>
     <div class="summary-item"><span class="label">风格</span><span class="value">${st?.name || '-'}</span></div>
     <div class="divider"></div>
-    <div class="summary-item"><span class="label">画幅</span><span class="value">${f.aspectRatio}</span></div>
+    <div class="summary-item"><span class="label">画幅</span><span class="value ratio-px" data-pixels="${((ASPECT_RATIOS[f.aspectRatio] || {}).pixels || '').replace(/、/g, ' · ')}">${f.aspectRatio}</span></div>
     ${f.slogan ? `<div class="divider"></div><div class="summary-item"><span class="label">Slogan</span><span class="value">${f.slogan}</span></div>` : ''}
   `;
 }
@@ -773,7 +773,7 @@ function createSceneCard(scene, index, startSec) {
       <div class="scene-tags">
         <span class="scene-tag duration">${scene.duration}s</span>
         <span class="scene-tag timecode">${timecodeLabel}</span>
-        <span class="scene-tag ratio">${scene.aspectRatio}</span>
+        <span class="scene-tag ratio ratio-px" data-pixels="${((ASPECT_RATIOS[scene.aspectRatio] || {}).pixels || '').replace(/、/g, ' · ')}">${scene.aspectRatio}</span>
         <span class="scene-tag shot">${scene.shotType}</span>
       </div>
     </div>

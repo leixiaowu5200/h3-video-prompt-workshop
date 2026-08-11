@@ -529,43 +529,35 @@ body::before {
   flex-wrap: wrap;
 }
 
-.ratio-card {
+/* ===== 画幅比例悬停提示（生成结果区：画幅摘要 + 镜头比例标签） ===== */
+.ratio-px {
   position: relative;
-  padding: 8px 14px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: var(--transition);
-  font-size: 12px;
-  font-weight: 600;
+  cursor: help;
 }
 
-.ratio-card:hover {
-  border-color: var(--border-hover);
-}
-
-.ratio-card:hover::after {
-  content: attr(data-pixels);
+.ratio-px:hover::after {
+  content: '推荐尺寸：' attr(data-pixels);
   position: absolute;
   left: 50%;
   bottom: calc(100% + 8px);
   transform: translateX(-50%);
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 240px;
+  text-align: center;
   background: #1f2430;
   color: #e8edf5;
   border: 1px solid var(--border-hover);
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
-  z-index: 50;
+  z-index: 60;
   pointer-events: none;
   box-shadow: 0 6px 18px rgba(0,0,0,.35);
 }
 
-.ratio-card:hover::before {
+.ratio-px:hover::before {
   content: '';
   position: absolute;
   left: 50%;
@@ -573,14 +565,18 @@ body::before {
   transform: translateX(-50%);
   border: 6px solid transparent;
   border-top-color: #1f2430;
-  z-index: 50;
+  z-index: 60;
   pointer-events: none;
 }
 
-.ratio-card.active {
-  border-color: var(--accent);
-  background: var(--accent-glow);
-  color: var(--accent-bright);
+/* 摘要区画幅值：轻微虚线下划线提示可悬停 */
+.summary-item .value.ratio-px {
+  border-bottom: 1px dashed var(--border-hover);
+}
+
+/* 镜头比例标签需要定位上下文以锚定气泡 */
+.scene-tag.ratio.ratio-px {
+  position: relative;
 }
 
 /* 单镜头时长选择 */
