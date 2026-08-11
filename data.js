@@ -2175,39 +2175,63 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
   }
 
   // ---- 2. 主体与画面（用用户填的内容，不替换）----
-  // 优先级：visualOverview > subject + action + environment
+  // 优先级：visualOverview > subject+action+environment > visualZhBase（zhdata.js 模板的画面描述）
+  // 注意：scene.voiceover 是布尔值，不是文本；台词在 scene.dialogueLine
   let main = '';
-  const vo = (scene.visualOverview || '').trim();
+  const vo = (typeof scene.visualOverview === 'string' ? scene.visualOverview : '').trim();
   if (vo) {
     main = vo;
   } else {
     // 没有 visualOverview 时，把 subject/action/environment 拼起来
     const parts = [];
-    if (scene.subject) parts.push(scene.subject);
-    if (scene.action) parts.push(scene.action);
-    if (scene.environment) parts.push('于' + scene.environment);
+    if (typeof scene.subject === 'string' && scene.subject.trim()) parts.push(scene.subject.trim());
+    if (typeof scene.action === 'string' && scene.action.trim()) parts.push(scene.action.trim());
+    if (typeof scene.environment === 'string' && scene.environment.trim()) parts.push('于' + scene.environment.trim());
     main = parts.join('，');
+  }
+  // 仍空：用 scene.visualZhBase（zhdata.js 模板生成的中文画面描述）提取首句作主体概述
+  if (!main) {
+    const vzh = (typeof scene.visualZhBase === 'string' ? scene.visualZhBase : '')
+      || (typeof scene.visualZh === 'string' ? scene.visualZh : '');
+    if (vzh) {
+      // 去掉 [镜头1] 标记、英文美学控制括号、模板自带的画外音标签
+      const cleaned = cleanVisualForSpeech(vzh.replace(/^\s*\[(?:Shot|镜头)\s*\d+\]\s*/i, ''));
+      // 只取首句作主体概述（避免与后面独立的 camClause 重复）
+      const firstSentence = cleaned.split(/[。]/).map(s => s.trim()).filter(Boolean)[0];
+      main = (firstSentence || '') + '。';
+    }
   }
   if (!main) {
     main = isZh ? '一个简洁的画面' : 'A simple frame';
   }
 
-  // 运镜（用户填则用用户填的，否则给一个温和的默认）
-  const cam = (scene.cameraMovement || '').trim();
-  const camClause = cam ? ('，' + cam) : '，镜头以中等速度从侧方跟拍';
+  // 运镜：scene.cameraMovement 是英文，用 CAM_ZH 翻译表转中文；翻译不到就跳过（避免中英混杂）
+  let cam = '';
+  const rawCam = typeof scene.cameraMovement === 'string' ? scene.cameraMovement.trim() : '';
+  if (rawCam && typeof CAM_ZH !== 'undefined') {
+    cam = CAM_ZH[rawCam] || '';
+    if (!cam && /^the camera\b/i.test(rawCam)) {
+      const stripped = rawCam.replace(/^the camera\s+/i, '').toLowerCase().slice(0, 20);
+      for (const k in CAM_ZH) {
+        if (k.toLowerCase().includes(stripped)) { cam = CAM_ZH[k]; break; }
+      }
+    }
+  }
+  // 关键：main 已包含运镜描述（"镜头以..." / "中景镜头..."）就不再附加 camClause，避免重复
+  const mainHasCamera = /镜头|运镜|跟拍|推进|环绕|横移|固定|手持|拉远|推近|上升|下降/.test(main);
+  let camClause = '';
+  if (!mainHasCamera) {
+    if (cam) camClause = '，' + cam;
+    else camClause = '，镜头以中等速度从侧方跟拍';
+  }
 
   // 视觉风格（写实/戏剧光/暖光等）
   const vs = (scene.visualStyle || '').trim();
   const styleClause = vs ? (' 视觉风格：' + vs) : '';
-  // 拼接主体+运镜+风格：处理 camClause 末尾标点，避免"跟拍。。视觉"双句号
-  const mainEndsWithPunc = /[。.,，；！？]$/.test(main);
-  const camEndsWithPunc = /[。.]$/.test(cam);
-  let body;
-  if (mainEndsWithPunc) {
-    body = main + (cam ? (' ' + cam) : '，镜头以中等速度从侧方跟拍') + '。' + styleClause + '\n';
-  } else {
-    body = main + (cam ? ('，' + cam) : '，镜头以中等速度从侧方跟拍') + (camEndsWithPunc ? '' : '。') + styleClause + '\n';
-  }
+  // 拼接：main + camClause（已按 mainHasCamera 抑制重复）+ styleClause
+  let body = main + camClause + styleClause + '\n';
+  // 标点清理：避免"透支。，" / "声音：...。。"类双标点
+  body = body.replace(/[。.,，；]+\s*[，；。]+/g, m => m.slice(-1)).replace(/[，。]\s*视觉/g, ' 视觉');
 
   // ---- 3. 时间线（4 段细分，避免被 H3 当成"模糊描述"忽略）----
   // 用户没填时间线时，按官方推荐的"建立→细节/推进→沉浸→收束"四段生成
@@ -2219,16 +2243,23 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
   body += '\n时间线：\n';
   for (let i = 0; i < segs.length; i++) {
     const range = fmtTimecode(segs[i][0]) + '-' + fmtTimecode(segs[i][1]);
-    const visual = beats[i] && beats[i].visual ? beats[i].visual : (isZh ? '动作持续推进' : 'action continues');
+    let visual = beats[i] && beats[i].visual ? beats[i].visual : (isZh ? '动作持续推进' : 'action continues');
+    // 时间线第一段如果和 main 重复（都是"中景镜头，跟拍..."），改为推进描述，避免与 main 冗余
+    if (i === 0 && main && visual.indexOf(main.substring(0, 12)) >= 0) {
+      visual = isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene';
+    }
     body += range + '：' + visual + '。\n';
   }
 
   // ---- 4. 台词（核心：用户填了画外音/对白就用 <d>[Chinese] 标签）----
-  const voiceover = (scene.voiceover || scene.dialogue || scene.dialogueLine || '').trim();
+  // 注意：scene.voiceover 是布尔值（true/false），不是台词文本；台词文本在 scene.dialogueLine
+  const voiceover = (typeof scene.dialogueLine === 'string' ? scene.dialogueLine : '').trim();
   if (voiceover) {
-    body += '\n声音：' + (scene.hasVoiceover === false ? '纯环境声，无对白。' : '主体清晰口播：<d>[Chinese] ' + voiceover + ' </d>，口型与台词严格同步。');
-  } else if (scene.soundscapeZh) {
-    body += '\n声音：' + scene.soundscapeZh + '。';
+    body += '\n声音：主体清晰口播：<d>[Chinese] ' + voiceover + ' </d>，口型与台词严格同步。';
+  } else if (typeof scene.soundscapeZh === 'string' && scene.soundscapeZh.trim()) {
+    // 去掉已有末尾标点再加"。"，避免"声音：...。。"
+    const ss = scene.soundscapeZh.trim().replace(/[。.,，；！？]+$/, '');
+    body += '\n声音：' + ss + '。';
   } else {
     body += '\n声音：自然环境声，主体清晰可闻。';
   }
