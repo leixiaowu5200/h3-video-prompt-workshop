@@ -296,6 +296,34 @@ function bindEvents() {
     advSection.classList.toggle('open');
   });
 
+  // H3 说明书折叠手风琴（侧边栏底部）
+  const helpDrawerToggle = document.getElementById('helpDrawerToggle');
+  const helpDrawerBody = document.getElementById('helpDrawerBody');
+  if (helpDrawerToggle && helpDrawerBody) {
+    // 恢复上次展开状态
+    const helpOpen = sessionStorage.getItem('h3_help_open') === 'true';
+    if (helpOpen) {
+      helpDrawerToggle.setAttribute('aria-expanded', 'true');
+      helpDrawerBody.classList.add('open');
+    }
+    helpDrawerToggle.addEventListener('click', () => {
+      const isOpen = helpDrawerToggle.getAttribute('aria-expanded') === 'true';
+      helpDrawerToggle.setAttribute('aria-expanded', String(!isOpen));
+      helpDrawerBody.classList.toggle('open', !isOpen);
+      sessionStorage.setItem('h3_help_open', String(!isOpen));
+    });
+    // 手风琴条目
+    document.querySelectorAll('.help-item-head').forEach(head => {
+      head.addEventListener('click', () => {
+        const item = head.closest('.help-item');
+        const wasActive = item.classList.contains('active');
+        // 关闭同层其他条目
+        item.closest('.help-accordion').querySelectorAll('.help-item').forEach(i => i.classList.remove('active'));
+        if (!wasActive) item.classList.add('active');
+      });
+    });
+  }
+
   // 生成按钮
   document.getElementById('generateBtn').addEventListener('click', handleGenerate);
 

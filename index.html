@@ -188,6 +188,73 @@
         </div>
       </div>
 
+      <!-- H3 说明书（折叠手风琴） -->
+      <div class="help-drawer" id="helpDrawer">
+        <button class="help-drawer-toggle" id="helpDrawerToggle" type="button" aria-expanded="false">
+          <span class="help-drawer-icon">📖</span>
+          <span class="help-drawer-label">H3 使用说明书</span>
+          <span class="help-drawer-arrow">▸</span>
+        </button>
+        <div class="help-drawer-body" id="helpDrawerBody">
+          <div class="help-accordion">
+
+            <div class="help-item" data-help="ratio">
+              <button class="help-item-head"><span>📐 画幅与分辨率</span><span class="help-item-arrow">▾</span></button>
+              <div class="help-item-body">
+                <p><strong>6 种画幅：</strong>21:9（影院宽银幕）/ 16:9（标准横屏）/ 4:3（经典电视）/ 1:1（社交方形）/ 3:4（小红书竖屏）/ 9:16（抖音/快手全屏竖屏）</p>
+                <p><strong>分辨率档位：</strong>默认 768p；通过推理参数 <code>H3-Regenerate-2K</code> 可一键升档到 2K 超清（适合最终成片）</p>
+                <p><strong>选择建议：</strong>TVC/广告片首选 16:9，影院感选 21:9，抖音/快手/小红书必选 9:16 或 3:4，国际平台选 16:9 或 1:1</p>
+              </div>
+            </div>
+
+            <div class="help-item" data-help="duration">
+              <button class="help-item-head"><span>⏱️ 时长与帧率</span><span class="help-item-arrow">▾</span></button>
+              <div class="help-item-body">
+                <p><strong>单镜头时长：</strong>在左侧选 10 秒或 15 秒（H3 单次生成上限 15 秒）。一次生成多个镜头段，每段是一段独立的 H3 视频。</p>
+                <p><strong>镜头数量：</strong>例如选 4 个镜头 × 15 秒 = 一条约 60 秒的成片。每个镜头内部工具会自动细分为若干时间线小段，让画面持续有内容、不空。</p>
+                <p><strong>帧率：</strong>24 FPS 电影级标准；<strong>音频：</strong>32kHz 立体声原生生成；<strong>衔接：</strong>每段末尾写明自然衔接下一镜开头。</p>
+                <p><strong>⚠️ H3 下限：</strong>单段最少 4 秒；本工具默认 10/15 秒均已满足。</p>
+              </div>
+            </div>
+
+            <div class="help-item" data-help="format">
+              <button class="help-item-head"><span>📝 分镜直投提示词结构</span><span class="help-item-arrow">▾</span></button>
+              <div class="help-item-body">
+                <p><strong>1. H3 开头规格声明</strong> — 时长、画幅、2K、立体声、模型名</p>
+                <p><strong>2. 参考图前缀（图生视频）</strong> — <code>@图片1作为人物参考@图片2作为产品参考</code> 放绝对开头</p>
+                <p><strong>3. 镜头描述</strong> — 主体、构图、运镜、光影、动作与台词</p>
+                <p><strong>4. 时间线细分</strong> — 切成若干段（如 0–3s、3–7s…），保证时长填满不空镜</p>
+                <p><strong>5. 衔接要求</strong> — 每段末尾自然衔接下一镜，末镜定格收尾</p>
+                <p><strong>6. 声音设计</strong> — 该镜专属环境声 / 配乐提示</p>
+              </div>
+            </div>
+
+            <div class="help-item" data-help="threeflow">
+              <button class="help-item-head"><span>🎬 三流程方法论 · 时长预算</span><span class="help-item-arrow">▾</span></button>
+              <div class="help-item-body">
+                <p><strong>先定流程再写提示词：</strong>文戏（关系/对白/微表情转折）、武戏（高密度攻防/受力反制）、九宫格（先出 3×3 关键画面再生成）。</p>
+                <p><strong>全局规格：</strong>{5/10/15}秒·16:9·2K·H3·原生立体声；全正向描述；时间段无缺口覆盖；连续≠一镜到底。</p>
+                <p><strong>图片引用前缀：</strong>有图时绝对开头一行 <code>@图片1作为XX@图片2作为XX</code></p>
+                <p><strong>时长预算：</strong>5s→2-4段 / 6-10动作；10s→4-6段 / 10-16动作；15s→5-8段 / 14-20动作；结尾余波 0.3→1.2s 递增。</p>
+                <p><strong>完整合订版（所有规则可溯源）：</strong>见仓库根目录《H3提示词生成参考背书（最新合订版）.md》。</p>
+              </div>
+            </div>
+
+            <div class="help-item" data-help="usage">
+              <button class="help-item-head"><span>🎬 使用方式</span><span class="help-item-arrow">▾</span></button>
+              <div class="help-item-body">
+                <p>① 左侧配置（类型/行业/品牌/风格/画幅/镜头数量/时长，可选图生视频参考图）</p>
+                <p>② 点击"🎬 生成"得到若干条「分镜直投提示词」，每条对应一段 H3 视频</p>
+                <p>③ 可选：点"✨ 优化提示词"用通义千问润色英文</p>
+                <p>④ 逐条复制，分别粘贴到海螺 H3 生成（每段 10–15 秒）</p>
+                <p>⑤ 用剪映/PR 按镜头顺序拼接、加转场、调色、出片</p>
+              </div>
+            </div>
+
+          </div><!-- /help-accordion -->
+        </div>
+      </div><!-- /help-drawer -->
+
       <!-- 生成按钮 -->
       <button class="btn-generate" id="generateBtn">
         <span>生成提示词与分镜</span>
@@ -254,97 +321,10 @@
     </section>
   </main>
 
-  <!-- H3 知识面板 -->
-  <section class="h3-info-section">
-    <div class="h3-info-grid">
-      <div class="h3-info-card" data-card="ratio" tabindex="0" role="button" aria-expanded="false">
-        <div class="h3-info-icon">📐</div>
-        <div class="h3-info-title">画幅与分辨率</div>
-        <div class="h3-info-text">
-          <div class="h3-info-short">支持 21:9 / 16:9 / 4:3 / 1:1 / 3:4 / 9:16<br>默认 768p，可通过 H3-Regenerate-2K 升至 2K</div>
-          <div class="h3-info-detail">
-            <p><strong>6 种画幅：</strong>21:9（影院宽银幕）/ 16:9（标准横屏）/ 4:3（经典电视）/ 1:1（社交方形）/ 3:4（小红书竖屏）/ 9:16（抖音/快手全屏竖屏）</p>
-            <p><strong>分辨率档位：</strong>默认 768p；通过推理参数 <code>H3-Regenerate-2K</code> 可一键升档到 2K 超清（适合最终成片）</p>
-            <p><strong>选择建议：</strong>TVC/广告片首选 16:9，影院感选 21:9，抖音/快手/小红书必选 9:16 或 3:4，国际平台选 16:9 或 1:1</p>
-          </div>
-          <div class="h3-info-toggle">点击展开 ▾</div>
-        </div>
-      </div>
-
-      <div class="h3-info-card" data-card="duration" tabindex="0" role="button" aria-expanded="false">
-        <div class="h3-info-icon">⏱️</div>
-        <div class="h3-info-title">时长与帧率</div>
-        <div class="h3-info-text">
-          <div class="h3-info-short">单次生成 4–15 秒 · 每段独立成片 · 相邻镜头自动衔接<br>24 FPS，32kHz 立体声原生音频</div>
-          <div class="h3-info-detail">
-            <p><strong>单镜头时长：</strong>在左侧选 10 秒或 15 秒（H3 单次生成上限 15 秒）。一次生成多个镜头段，每段是一段独立的 H3 视频。</p>
-            <p><strong>镜头数量：</strong>例如选 4 个镜头 × 15 秒 = 一条约 60 秒的成片。每个镜头内部工具会自动细分为若干时间线小段（如 0–3s、3–7s、7–11s、11–15s），让画面持续有内容、不空。</p>
-            <p><strong>帧率：</strong>24 FPS 电影级标准，画面运动流畅自然</p>
-            <p><strong>音频：</strong>32kHz 立体声原生生成，画面中的环境音、对白、音乐一并输出，无需后期配音</p>
-            <p><strong>衔接：</strong>每段提示词都会写明"结尾须自然衔接下一镜开头"，后期按顺序拼接即为一条连贯成片，场景间加 0.2–0.5 秒转场更自然。</p>
-            <p><strong>⚠️ H3 下限：</strong>单段最少 4 秒；本工具默认 10/15 秒均已满足。</p>
-          </div>
-          <div class="h3-info-toggle">点击展开 ▾</div>
-        </div>
-      </div>
-
-      <div class="h3-info-card" data-card="format" tabindex="0" role="button" aria-expanded="false">
-        <div class="h3-info-icon">📝</div>
-        <div class="h3-info-title">分镜直投提示词结构</div>
-        <div class="h3-info-text">
-          <div class="h3-info-short">每条 = 一段 H3 视频<br>开头 · 参考图 · 时间线细分 · 衔接</div>
-          <div class="h3-info-detail">
-            <p><strong>1. H3 开头：</strong>「生成一段 N 秒、16:9、2K、原生立体声、MiniMax H3 的视频」——声明规格。</p>
-            <p><strong>2. 参考图前缀（图生视频）：</strong>「@参考图1作为人物视觉参考（描述：…）」放在绝对开头，符合 H3 图片引用规则。</p>
-            <p><strong>3. 镜头描述：</strong>主体、构图、运镜、光影、动作与台词。</p>
-            <p><strong>4. 时间线细分：</strong>把单镜头时长切成几段（如 0–3s、3–7s、7–11s、11–15s），每段都有明确画面，保证时长被填满、不空镜。</p>
-            <p><strong>5. 衔接要求：</strong>每段末尾写明"本镜结尾须自然衔接下一镜开头"，末镜则定格收尾，确保成片连贯。</p>
-            <p><strong>6. 声音设计：</strong>该镜专属环境声 / 配乐提示。</p>
-          </div>
-          <div class="h3-info-toggle">点击展开 ▾</div>
-        </div>
-      </div>
-
-      <div class="h3-info-card" data-card="threeflow" tabindex="0" role="button" aria-expanded="false">
-        <div class="h3-info-icon">🎬</div>
-        <div class="h3-info-title">三流程方法论 · 时长预算</div>
-        <div class="h3-info-text">
-          <div class="h3-info-short">官方背书：文戏 / 武戏 / 九宫格 三流程<br>5·10·15 秒时长预算（详见《参考背书》）</div>
-          <div class="h3-info-detail">
-            <p><strong>先定流程，再写提示词：</strong>文戏（关系/对白/微表情转折）、武戏（高密度攻防/受力反制）、九宫格（先出 3×3 关键画面再生成）。未选模式时先只问模式、不生成。</p>
-            <p><strong>全局规格：</strong>默认 {5/10/15}秒·16:9·2K·H3·原生立体声；全正向描述；时间段无缺口覆盖；连续≠一镜到底（默认允许硬切）。</p>
-            <p><strong>图片引用前缀：</strong>有图时绝对开头一行 <code>@图片1作为XX@图片2作为XX</code>，再换行进「生成一段…」。</p>
-            <p><strong>时长预算（文戏段数 / 武戏动作数）：</strong>5s→2-4段 / 6-10动作；10s→4-6段 / 10-16动作；15s→5-8段 / 14-20动作；结尾余波 0.3→1.2s 递增。</p>
-            <p><strong>九宫格：</strong>九格=九个关键状态（非一镜到底），阶段A出图、阶段B依实际成图生成；15s 须九格全出现、中间格不被形变吞掉。</p>
-            <p><strong>完整合订版（所有规则可溯源）：</strong>见仓库根目录《H3提示词生成参考背书（最新合订版）.md》。</p>
-          </div>
-          <div class="h3-info-toggle">点击展开 ▾</div>
-        </div>
-      </div>
-
-      <div class="h3-info-card" data-card="usage" tabindex="0" role="button" aria-expanded="false">
-        <div class="h3-info-icon">🎬</div>
-        <div class="h3-info-title">使用方式</div>
-        <div class="h3-info-text">
-          <div class="h3-info-short">选好配置 → 生成 → 复制分镜提示词<br>逐段粘贴 H3 生成 → 拼接出片</div>
-          <div class="h3-info-detail">
-            <p><strong>标准流程：</strong></p>
-            <p>① 左侧配置（类型/行业/品牌/风格/画幅/镜头数量/单镜头时长，可选图生视频参考图）</p>
-            <p>② 点击"🎬 生成"得到若干条「分镜直投提示词」，每条对应一段 H3 视频</p>
-            <p>③ 可选：点"✨ 优化提示词"用通义千问润色英文</p>
-            <p>④ 逐条复制，分别粘贴到海螺 H3 生成（每段 10–15 秒）</p>
-            <p>⑤ 用剪映/PR 按镜头顺序拼接、加转场、调色、出片</p>
-            <p><strong>小贴士：</strong>同一主题多版本（节日版/产品版）可反复生成，沉淀为团队的"提示词模板库"</p>
-          </div>
-          <div class="h3-info-toggle">点击展开 ▾</div>
-        </div>
-      </div>
-    </div>
-    <div class="h3-footer">
-      <p>基于 <a href="https://www.minimax.io/news/minimax-h3-open-source" target="_blank" rel="noopener">MiniMax H3 开源模型</a> 官方提示词规范构建 · 遵循 H3 Prompt Writing Guide Full-Reference 六段式全参考格式</p>
-      <p class="h3-footer-note">本工具生成的提示词可直接用于 H3-Base（T2VA/FL2VA）推理 · 建议配合 H3-Context-IR 使用以获得最佳效果</p>
-    </div>
-  </section>
+  <!-- 极简 Footer -->
+  <footer class="app-footer">
+    <p>基于 <a href="https://www.minimax.io/news/minimax-h3-open-source" target="_blank" rel="noopener">MiniMax H3 开源模型</a> · 遵循 H3 Full-Reference 六段式全参考格式 · 左下角 📖 说明书查看完整使用指南</p>
+  </footer>
   </div><!-- /app-shell -->
 
   <!-- 回到顶部按钮 -->

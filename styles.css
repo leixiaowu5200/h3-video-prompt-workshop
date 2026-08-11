@@ -1446,149 +1446,200 @@ body::before {
   white-space: nowrap;
 }
 
-/* ========== H3 Info Section ========== */
-.h3-info-section {
-  position: relative;
-  z-index: 1;
-  padding: 36px 0 40px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-secondary);
-  margin-top: 16px;
+/* ========== H3 说明书（侧边栏折叠手风琴） ========== */
+.help-drawer {
+  margin-top: 4px;
+  border-top: 1px dashed var(--border);
+  padding-top: 14px;
 }
 
-.h3-info-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.h3-info-card {
-  padding: 18px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  text-align: center;
-  transition: var(--transition);
-  cursor: pointer;
-  outline: none;
-}
-
-.h3-info-card:hover {
-  border-color: var(--accent-dim);
-  background: var(--bg-card-hover);
-  transform: translateY(-2px);
-}
-
-.h3-info-card:focus-visible {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(212, 164, 76, 0.25);
-}
-
-.h3-info-card.expanded {
-  background: var(--bg-card-hover);
-  border-color: var(--accent-dim);
-}
-
-.h3-info-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
-
-.h3-info-title {
+.help-drawer-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(212,164,76,0.08), rgba(212,164,76,0.02));
+  border: 1px solid rgba(212,164,76,0.25);
+  border-radius: var(--radius-sm);
+  color: var(--accent-bright);
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-sans);
+  letter-spacing: 0.3px;
 }
 
-.h3-info-text {
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.6;
+.help-drawer-toggle:hover {
+  background: linear-gradient(135deg, rgba(212,164,76,0.14), rgba(212,164,76,0.05));
+  border-color: rgba(212,164,76,0.45);
 }
 
-.h3-info-detail {
-  display: none;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
+.help-drawer-toggle .help-drawer-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.help-drawer-toggle .help-drawer-label {
+  flex: 1;
   text-align: left;
+}
+
+.help-drawer-toggle .help-drawer-arrow {
   font-size: 11px;
-  line-height: 1.7;
-  color: var(--text-secondary);
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
 }
 
-.h3-info-detail p {
-  margin: 0 0 8px 0;
+.help-drawer-toggle[aria-expanded="true"] .help-drawer-arrow {
+  transform: rotate(90deg);
 }
 
-.h3-info-detail p:last-child {
-  margin-bottom: 0;
+.help-drawer-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.h3-info-detail strong {
+.help-drawer-body.open {
+  max-height: 520px;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding-right: 4px;
+}
+
+.help-drawer-body::-webkit-scrollbar { width: 4px; }
+.help-drawer-body::-webkit-scrollbar-track { background: transparent; }
+.help-drawer-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.help-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-item {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.help-item:hover {
+  border-color: var(--border-hover);
+}
+
+.help-item.active {
+  border-color: rgba(212,164,76,0.35);
+}
+
+.help-item-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition: var(--transition);
+}
+
+.help-item-head:hover {
+  color: var(--accent-bright);
+}
+
+.help-item-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.help-item.active .help-item-arrow {
+  transform: rotate(180deg);
   color: var(--accent);
+}
+
+.help-item-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+.help-item.active .help-item-body {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.help-item-body::-webkit-scrollbar { width: 3px; }
+.help-item-body::-webkit-scrollbar-track { background: transparent; }
+.help-item-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.help-item-body p {
+  padding: 8px 12px 10px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  border-top: 1px dashed rgba(255,255,255,0.06);
+}
+
+.help-item-body p:first-child {
+  border-top: none;
+}
+
+.help-item-body strong {
+  color: var(--accent-bright);
   font-weight: 600;
 }
 
-.h3-info-detail code {
-  background: rgba(212, 164, 76, 0.12);
+.help-item-body code {
+  background: rgba(212,164,76,0.12);
   color: var(--accent);
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'Consolas','Monaco',monospace;
   font-size: 10.5px;
 }
 
-.h3-info-card.expanded .h3-info-short {
-  display: none;
-}
-
-.h3-info-card.expanded .h3-info-detail {
-  display: block;
-}
-
-.h3-info-toggle {
-  margin-top: 10px;
-  font-size: 10.5px;
-  color: var(--accent-dim);
-  font-weight: 500;
-}
-
-.h3-info-card.expanded .h3-info-toggle {
-  color: var(--accent);
-}
-
-.h3-footer {
+/* ========== 极简 Footer（替代原 h3-info-section） ========== */
+.app-footer {
+  position: relative;
+  z-index: 1;
+  padding: 20px 0 32px;
   text-align: center;
-  padding-top: 16px;
   border-top: 1px solid var(--border);
+  margin-top: 8px;
 }
 
-.h3-footer p {
-  font-size: 12px;
+.app-footer p {
+  font-size: 11.5px;
   color: var(--text-muted);
-  line-height: 1.8;
+  line-height: 1.7;
 }
 
-.h3-footer a {
+.app-footer a {
   color: var(--accent);
   text-decoration: none;
   transition: var(--transition);
 }
 
-.h3-footer a:hover {
+.app-footer a:hover {
   color: var(--accent-bright);
   text-decoration: underline;
 }
 
-.h3-footer-note {
-  font-size: 11px !important;
-  color: var(--text-muted);
-  opacity: 0.7;
-  margin-top: 4px;
-}
+/* ========== H3 Info Section（已弃用，保留以防引用） ========== */
+.h3-info-section { display: none !important; }
 
 /* ========== Header Gear (混元设置) ========== */
 .header-gear {
