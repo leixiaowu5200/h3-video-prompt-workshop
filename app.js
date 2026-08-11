@@ -7,6 +7,7 @@ const state = {
   selectedVideoType: 'corporate',
   selectedIndustry: '',
   selectedStyle: 'cinematic',
+  marketingStyle: 'none', // 'none' | 'xiaohongshu' | 'douyin' —— 营销优化层（小红书/抖音种草）
   selectedRatio: '16:9',
   shotDur: 15, // 单镜头时长（5 / 10 / 15 秒）
   genMode: 't2v', // 't2v' 文生视频 | 'i2v' 图生视频
@@ -25,6 +26,7 @@ function init() {
   onVideoTypeChange();
   renderIndustries();
   renderStyles();
+  renderMarketingStyles();
   renderRatios();
   renderDurations();
   // 同步语言切换高亮
@@ -321,6 +323,18 @@ function renderStyles() {
   });
 }
 
+// ========== 渲染营销优化（小红书/抖音种草）==========
+function renderMarketingStyles() {
+  const items = Object.entries(MARKETING_STYLES).map(([key, m]) => ({
+    value: key, name: m.name, desc: m.nameEn
+  }));
+  makeFieldSelect('marketingField', {
+    items,
+    activeValue: state.marketingStyle,
+    onSelect: (val) => { state.marketingStyle = val; }
+  });
+}
+
 // ========== 渲染画幅 ==========
 function renderRatios() {
   const items = Object.entries(ASPECT_RATIOS).map(([key, r]) => ({
@@ -600,6 +614,7 @@ function collectFormData() {
     productDesc: document.getElementById('productDesc').value.trim(),
     slogan: document.getElementById('slogan').value.trim(),
     style: state.selectedStyle,
+    marketingStyle: state.marketingStyle,
     aspectRatio: state.selectedRatio,
     voiceoverText: document.getElementById('voiceoverText').value.trim(),
     audience: document.getElementById('audience').value.trim(),
@@ -1306,6 +1321,7 @@ function loadHistoryRecord(id) {
     document.getElementById('industry').value = rec.formData.industry || '';
     document.getElementById('brandName').value = rec.formData.brandName || '';
     document.getElementById('style').value = rec.formData.style || '';
+    state.marketingStyle = rec.formData.marketingStyle || 'none';
     document.getElementById('ratio').value = rec.formData.ratio || '';
     document.getElementById('duration').value = rec.formData.duration || '';
     document.getElementById('coreMessage').value = rec.formData.coreMessage || '';
@@ -1321,6 +1337,7 @@ function loadHistoryRecord(id) {
     renderVideoTypes();
     renderIndustries();
     renderStyles();
+    renderMarketingStyles();
     renderRatios();
     const dlgEl = document.getElementById('dialogue');
     if (dlgEl) dlgEl.value = rec.formData.dialogue || '';

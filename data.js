@@ -1625,6 +1625,7 @@ function generateStoryboard(formData) {
     data.duration = shotDur; // 每段固定时长（H3 单次生成上限 15 秒）
     data.dialogueLine = sceneCtx.dialogueLine; // 透传台词，供 buildShotBlock 使用
     data.shotIndex = i; // 记录序号，供参考图 scope 等使用
+    data.marketingStyle = formData.marketingStyle || 'none'; // 营销优化层（小红书/抖音），供 buildShotBrief 注入种草调性
     scenes.push(data);
   }
   return scenes;
@@ -2148,6 +2149,28 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   return out;
 }
 
+// ========== 营销优化风格（小红书种草 / 抖音快节奏）==========
+// 与行业、视觉风格正交：作为「发布平台调性」叠加层，只改提示词的营销表达（钩子/调性/互动引导），不动画面与合规铁律。
+const MARKETING_STYLES = {
+  none: { name: '无（纯展示）', nameEn: 'None' },
+  xiaohongshu: {
+    name: '小红书种草',
+    nameEn: 'Xiaohongshu Seeding',
+    toneZh: '种草调性：第一人称真实分享，口语化、有生活温度，像朋友安利好物；画面重真实生活感，不刻意摆拍。',
+    hookZh: '开场钩子：前 3 秒用一句扎心 / 反差 / 好奇抓住注意力（如"每天累到只想瘫着？""后悔没早点知道"），引发共鸣后再展开。',
+    ctaZh: '种草收尾：主角微笑面向镜头，自然口播互动引导：「觉得有用就点个收藏，关注我，带你把日常过成养生局。」口型与台词严格同步。',
+    ctaNoPersonZh: '种草收尾：结尾以引导互动收束，可叠加「收藏 · 关注」类字幕感，自然不突兀，不强行加人物。'
+  },
+  douyin: {
+    name: '抖音快节奏',
+    nameEn: 'Douyin Fast-paced',
+    toneZh: '抖音调性：节奏明快、信息密度高，强情绪、强代入；前 3 秒黄金钩子直给，不铺垫。',
+    hookZh: '开场钩子：前 3 秒用强反差或悬念直击痛点（如"用了 7 天，我后悔没早买""别再花冤枉钱"），立刻抓住注意力。',
+    ctaZh: '引流收尾：主角看向镜头，干脆利落地口播：「喜欢点赞，关注我，下次不迷路。」口型与台词严格同步。',
+    ctaNoPersonZh: '引流收尾：结尾以强引导收束，可叠加「点赞 · 关注」类字幕感，节奏干脆不拖沓。'
+  }
+};
+
 // 分镜卡片「直投提示词」专用：海螺官方极简结构
 // 关键原则：①只写用户填的具体内容，不堆通用模板；②参考图对应关系用「第N张：类型」明确写出；
 // ③台词用 <d>[Chinese] ... </d> 严格按官方规则；④总长控制在 300-600 字内（用户写多少就是多少）
@@ -2160,6 +2183,9 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
   const isZh = lang === 'zh';
   const subject = detectSubject(scene, lang);
   const dur = scene.duration || 5;
+  // 营销优化层：小红书种草 / 抖音快节奏（仅中文路径注入；英文路径保留另一台电脑版本不动）
+  const mk = (isZh && typeof scene.marketingStyle === 'string' && MARKETING_STYLES[scene.marketingStyle])
+    ? scene.marketingStyle : 'none';
 
   // ---- 1. 开头（秒数/画幅/分辨率/参考图对应）----
   // 海螺官方极简风格：单行说清"时长+画幅+分辨率+立体声+引擎"，再用「@image#N」明确参考图顺序
@@ -2251,6 +2277,15 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
     body += range + '：' + visual + '。\n';
   }
 
+  // ---- 3.5 营销优化（小红书/抖音）：种草调性 + 开场钩子（仅首镜）----
+  if (mk !== 'none') {
+    const M = MARKETING_STYLES[mk];
+    body += '\n' + M.toneZh;
+    if (index === 0) {
+      body += '\n' + M.hookZh;
+    }
+  }
+
   // ---- 4. 台词（核心：用户填了画外音/对白就用 <d>[Chinese] 标签）----
   // 注意：scene.voiceover 是布尔值（true/false），不是台词文本；台词文本在 scene.dialogueLine
   const voiceover = (typeof scene.dialogueLine === 'string' ? scene.dialogueLine : '').trim();
@@ -2277,6 +2312,11 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
           ? '人物状态稳定收束，表情与姿态自然定格。'
           : '镜头稳定落定，画面自然收束。')
       : '\n\nThe shot ends on a stable, readable frame.';
+    // 营销收尾（末镜）：有主角则口播互动引导；无主角则叠字幕感引导
+    if (mk !== 'none') {
+      const M = MARKETING_STYLES[mk];
+      tail += '\n\n' + (subject.character ? M.ctaZh : M.ctaNoPersonZh);
+    }
   }
 
   return header + body + tail;
