@@ -1711,28 +1711,34 @@ function splitDuration(dur) {
 //   1) 先描述整体场景（地点 + 人物 + 正在发生的事）——取镜头正文首句
 //   2) 再按时间拆分为多段，每段合并「镜头 + 相机运动」
 //   3) 声音（台词/音效/音乐）在块内只描述一次，避免逐段重复啰嗦
-// 中文模式：技术词一律取中文翻译，匹配不到则留空（绝不回退英文，避免中英混杂）
-function buildShotBriefCore(scene, lang) {
+// ========== 结构化分镜简报核心（V2 · 四段式分层输出）==========
+// 遵循 H3 官方指南 + 逐帧实测优化：
+//   每段输出 4 个独立子字段：运镜（完整句）| 画面（含角色细节锁定）| 台词（带说话人标记）| 声音层（三层分离）
+//   声音三层：环境音（角色能听到的）> 配乐（仅观众听到的BGM）> 人声（台词主体）
+//   中文模式：技术词一律取中文翻译，匹配不到则留空（绝不回退英文）
+function buildShotBriefCore(scene, lang, shotIndex) {
   const isZh = lang === 'zh';
   const dur = scene.duration || 5;
+  const idx = (shotIndex || 0) + 1;
 
-  const shotZh = isZh ? (SHOT_TYPE_ZH[(scene.shotType || '').trim()] || '') : '';
-  const camZh = isZh ? (CAM_ZH[(scene.cameraMovement || '').trim()] || '') : '';
-  const shotEn = scene.shotType || '';
+  // 运镜翻译（中文完整句式，非标签）
+  const camZh = isZh ? (CAM_ZH[(scene.cameraMovement || '').trim()] || '自然运镜') : '';
   const camEn = scene.cameraMovement || '';
 
+  // 声音素材
   const sound = isZh
     ? (scene.soundscapeZh || '贴合画面的自然环境底噪')
     : (scene.soundscapeEn || 'natural ambient sound');
   const music = isZh ? (scene.musicZh || '') : (scene.musicEn || '');
   const dialogue = scene.dialogueLine || '';
 
-  // 镜头正文（已清理掉 <d> 画外音标签、美学控制括号等噪声）
+  // 镜头正文（已清理噪声）
   let body = (isZh ? (scene.visualZhBase || scene.visualZh) : (scene.visualEnBase || scene.visualEn)) || '';
   body = cleanVisualForSpeech((' ' + body).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim());
-  // 按句拆分：首句作"整体场景"，其余句作为时间线推进内容
-  const sentences = body.split(/[。.\n]/).map(s => s.trim()).filter(Boolean);
-  const overall = sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
+
+  // 按句拆分：首句作"整体场景/画面概要"，其余句作为时间线推进内容
+  const sentences = body.split(/[。.\n]/).map(function(s){ return s.trim(); }).filter(Boolean);
+  const visualOverview = sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
   const prog = sentences.slice(1);
 
   // 细分时间线（覆盖完整时长，无缺口）
@@ -1740,47 +1746,94 @@ function buildShotBriefCore(scene, lang) {
   const segs = [];
   for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
 
-  const beats = segs.map((seg, i) => {
-    const [s, e] = seg;
-    const range = isZh ? (s + '—' + e + '秒') : (s + '-' + e + 's');
-    const content = prog[i] || (prog.length ? prog[i % prog.length] : '')
-      || (isZh ? '动作持续推进，主体神态与姿态发生可见变化，情绪逐步积累'
-               : 'action continues, the subject’s expression and posture shift visibly as emotion builds');
-    if (isZh) {
-      return range + '：' + (shotZh ? (shotZh + '，') : '') + content + '，运镜·' + (camZh || '自然运镜') + '。';
-    }
-    // 英文：相机运动字符串常以 "The camera" 开头，避免拼出 "camera The camera"
-    const camText = (camEn && /^the camera/i.test(camEn))
-      ? (camEn.charAt(0).toLowerCase() + camEn.slice(1))
-      : (camEn || 'moves naturally');
-    return range + ': ' + (shotEn ? (shotEn + ', ') : '') + content + '; ' + camText + '.';
-  });
+  // ---- 构建每段的四字段输出 ----
+  var parts = [];
 
-  // 声音：块内只描述一次（台词 > 环境音 > 配乐），避免逐段重复
-  let audioLine = '';
-  const trimEnd = (s) => (s || '').replace(/[。.\s，,]+$/, '');
-  if (isZh) {
-    const audio = [];
-    if (dialogue) audio.push('台词「' + dialogue + '」');
-    audio.push('环境音·' + trimEnd(sound));
-    if (music) audio.push('配乐·' + trimEnd(music));
-    audioLine = '【声音】' + audio.join('，') + '。';
-  } else {
-    const audio = [];
-    if (dialogue) audio.push('dialogue "' + dialogue + '"');
-    audio.push('ambient ' + trimEnd(sound));
-    if (music) audio.push('music ' + trimEnd(music));
-    audioLine = '【Audio】' + audio.join(', ') + '.';
+  // 时间范围格式化
+  function fmtSeg(s, e) {
+    var ss = String(Math.floor(s / 60)).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+    var ee = String(Math.floor(e / 60)).padStart(2,'0') + ':' + String(e % 60).padStart(2,'0');
+    return isZh ? (ss + ' \u2014 ' + ee) : (ss + '-' + ee);
   }
 
-  const header = isZh
-    ? ('【整体场景】' + overall + '\n')
-    : ('【Overall scene】' + overall + '\n');
-  const timeline = (isZh
-    ? ('【分镜时间线 · 共 ' + dur + ' 秒，' + segs.length + ' 段】\n')
-    : ('【Shot timeline · ' + dur + 's, ' + segs.length + ' segments】\n')) + beats.join('\n');
+  for (var si = 0; si < segs.length; si++) {
+    var seg = segs[si], s = seg[0], e = seg[1];
+    var range = fmtSeg(s, e);
+    var content = prog[si] || (prog.length ? prog[si % prog.length] : '')
+      || (isZh ? '\u52a8\u4f5c\u6301\u7eed\u63a8\u8fdb\uff0c\u4e3b\u4f53\u795e\u6001\u4e0e\u59ff\u6001\u53d1\u751f\u53ef\u89c6\u53d8\u5316\uff0c\u60c5\u7eea\u9010\u6b65\u79ef\u7d2f'
+               : 'action continues, expression and posture shift visibly as emotion builds');
 
-  return '\n' + header + timeline + audioLine + '\n';
+    var block = '';
+    // --- 运镜（完整描述句）---
+    if (isZh) {
+      block += '\u8fd0\u955c\uff1a' + camZh + '\u3002';
+      if (segs.length > 1) { block += '\u672c\u6bb5\u65f6\u95f4\u8303\u56f4\u4e3a ' + range + '\uff0c'; }
+    } else {
+      var cText = (camEn && /^the camera/i.test(camEn))
+        ? (camEn.charAt(0).toLowerCase() + camEn.slice(1)) : (camEn || 'moves naturally');
+      block += 'Camera: ' + cText + '.';
+      if (segs.length > 1) { block += ' Time range: ' + range + '.'; }
+    }
+    block += '\n\n';
+
+    // --- 画面（首句概要 + 本段推进 + 角色细节锁定）---
+    if (isZh) {
+      block += '\u753b\u9762\uff1a';
+      if (si === 0) { block += visualOverview + '\u3002'; }
+      block += content + '\u3002';
+      block += '\n\uff08\u89d2\u8272\u5916\u89c2\u9501\u5b9a\uff1a\u4fdd\u6301\u5f53\u524d\u89d2\u8272\u7684\u4e94\u5b98\u3001\u53d1\u578b\u3001\u670d\u88c5\u3001\u8eab\u6750\u6bd4\u4f8b\u4e0e\u672c\u6bb5\u5f00\u5934\u5b8c\u5168\u4e00\u81f4\uff0c\u4e0d\u5f97\u6362\u8138\u3001\u53d8\u88c5\u6216\u878d\u5408\u4eba\u7269\u7279\u5f81\u3002\uff09';
+    } else {
+      block += 'Visual: ';
+      if (si === 0) { block += visualOverview + '. '; }
+      block += content + '.';
+      block += '\n(Character lock: preserve face, hairstyle, costume and body proportions exactly as established at the start of this segment. No face-swap, wardrobe change or feature blending.)';
+    }
+    block += '\n\n';
+
+    // --- 台词（带说话人标记 + 情绪指导）---
+    if (dialogue && si === Math.floor(segs.length / 2)) {
+      if (isZh) {
+        block += '\u53f0\u8bcd\u2014\u2014' + dialogue;
+        block += '\n\uff08\u89d2\u8272\u6e05\u6670\u8bf4\u51fa\uff0c\u8bed\u901f\u9002\u4e2d\uff0c\u53e3\u578b\u4e0e\u4e2d\u6587\u53f0\u8bcd\u51c6\u786e\u540c\u6b65\uff0c\u5305\u542b\u81ea\u7136\u7684\u505c\u987f\u3001\u547c\u5438\u548c\u60c5\u7eea\u6ce2\u52a8\u3002\uff09';
+      } else {
+        block += 'Dialogue: "' + dialogue + '"';
+        block += '\n(Clear speech, natural pace, lipsync with natural pauses, breathing and emotional nuance.)';
+      }
+      block += '\n\n';
+    }
+
+    // --- 声音层（三层分离）---
+    if (isZh) {
+      block += '\u58f0\u97f3\u5c42\uff08\u672c\u6bb5\uff09\uff1a\n';
+      block += '- \u73af\u5883\u97f3\uff1a' + sound + '\u3002\n';
+      if (music) { block += '- \u914d\u4e50\uff1a' + music + '\u3002\uff08\u914d\u4e50\u97f3\u91cb\u6c38\u8fdc\u4e0d\u8d85\u8fc7\u4eba\u58f0\u768440%\uff0c\u5728\u53f0\u8bcd\u51fa\u73b0\u65f6\u4e3b\u52a8\u8ba9\u4f4d\u964d\u97f3\u91cf\u6216\u6682\u505c\uff09\n'; }
+      else { block += '- \u914d\u4e50\uff1a\u65e0\uff08N/A\uff09\n'; }
+      if (dialogue && si === Math.floor(segs.length / 2)) {
+        block += '- \u4eba\u58f0\uff1a\u53f0\u8bcd\u58f0\u97f3\u6e05\u6670\u4e3b\u4f53\uff0c\u547c\u5438\u58f0\u548c\u60c5\u7eea\u8868\u8fbe\u81ea\u7136\u53ef\u95fb\u3002\n';
+      } else {
+        block += '- \u4eba\u58f0\uff1a\u4ee5\u73af\u5883\u97f3\u548c\u914d\u4e50\u4e3b\u4f53\uff08\u672c\u6bb5\u65e0\u53f0\u8bcd\uff09\u3002\n';
+      }
+    } else {
+      block += 'Sound design (this segment):\n';
+      block += '- Ambient: ' + sound + '.\n';
+      if (music) { block += '- Music: ' + music + '. (Music volume never exceeds 40% of dialogue; duck or pause during spoken lines)\n'; }
+      else { block += '- Music: N/A\n'; }
+      if (dialogue && si === Math.floor(segs.length / 2)) {
+        block += '- Voice: Dialogue is clear and prominent; breathing and emotional expression audible.\n';
+      } else {
+        block += '- Voice: Ambient and music only (no dialogue in this segment).\n';
+      }
+    }
+
+    parts.push(block);
+  }
+
+  // 组装：段标题 + 四字段内容
+  var header = isZh
+    ? ('### \u7b2c ' + idx + ' \u6bb5 | ' + fmtSeg(0, dur) + '\n')
+    : ('### Segment ' + idx + ' | ' + fmtSeg(0, dur) + '\n');
+
+  return '\n' + header + parts.join('\n---\n\n') + '\n';
 }
 
 // 从下一镜抽取简短"开头画面"，用于衔接指令
@@ -1837,7 +1890,7 @@ function buildShotBlock(scene, index, startSec, lang, refNote, opts) {
   let out = marker + body + ctrl + dl;
   if (refNote) out += refNote;
   // 追加结构化自然语言简报（时间线 + 镜头运动 + 视觉风格 + 声音设计），让单镜填满时长
-  out += buildShotBriefCore(scene, lang);
+  out += buildShotBriefCore(scene, lang, index);
   return out;
 }
 
@@ -1853,7 +1906,23 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
   const opening = isZh
     ? ('生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频：\n')
     : ('Generate ' + article + ' ' + dur + '-second, 16:9, 2K, native stereo, MiniMax H3 video:\n');
-  const core = buildShotBriefCore(scene, lang);
+
+  // V2 新增：全局风格与负面提示（每个镜头都携带，确保 H3 单次生成有完整上下文）
+  var globalHeader = '';
+  if (isZh) {
+    globalHeader =
+      '\n=== 全局风格与角色锁定 ===\n' +
+      '分辨率要求：1080p 以上（2K），16:9 画幅。\n' +
+      '角色一致性：画面中所有角色的五官、发型、服装、身材比例必须在本段内保持完全一致，不得换脸、变装或融合人物特征。\n' +
+      '负面约束：卡通/动漫/Q版/低幼风格；现代服装或现代建筑；塑料皮肤或过度磨皮；模糊面部或五官畸形；嘴型错误或口型不同步；两人同时说话或说话者错误；无关人物开口；人物融合/换脸/变装；多余人物或多余肢体；夸张表演或廉价特效；镜头乱晃或频繁闪烁；画面中出现任何字幕/文字/水印。\n';
+  } else {
+    globalHeader =
+      '\n=== Global Style & Character Lock ===\n' +
+      'Resolution: 1080p+ (2K), 16:9 aspect ratio.\n' +
+      'Character consistency: All characters must preserve face, hairstyle, costume and body proportions throughout this segment. No face-swap, wardrobe change or feature blending.\n' +
+      'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen.\n';
+  }
+  const core = buildShotBriefCore(scene, lang, index);
 
   // 衔接 / 收尾指令
   let tail = '';
