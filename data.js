@@ -1826,7 +1826,9 @@ function genBeats(scene, lang, segs, subject) {
   const CAM_RE2 = /\bcamera (slowly|moves|trucks|pans|tilts|zooms|dollies|tracks|orbits|rotates|continues|holds|stays)\b/i;
   const sentences = body.split(isZh ? /[。.\n]/ : /(?<=[.。])\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
   const nonCam = sentences.filter(function (s) { return !CAM_RE.test(s) && !CAM_RE2.test(s); });
-  const overview = nonCam[0] || sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
+  const overview = nonCam[0] || sentences[0] || (isZh
+    ? (subject.product ? '主体静置于画面中，开始展现细节' : (subject.character ? '主体进入画面，建立场景' : '空间铺陈，氛围建立'))
+    : (subject.product ? 'the subject sits in frame, revealing initial details' : (subject.character ? 'the subject enters frame, establishing the scene' : 'space is laid out, atmosphere is established')));
   const userClauses = nonCam.slice(1);
   const tpl = isZh ? midBeatsZh(subject) : midBeatsEn(subject);
   const camMoves = isZh ? CAM_MOVES_ZH : CAM_MOVES_EN;
@@ -1880,7 +1882,9 @@ function buildShotBriefCore(scene, lang, shotIndex) {
   const CAM_RE = /^\s*the camera\b/i;
   const CAM_RE2 = /\bcamera (slowly|moves|trucks|pans|tilts|zooms|dollies|tracks|orbits|rotates|continues|holds|stays)\b/i;
   const nonCam = sentences.filter(function(s){ return !CAM_RE.test(s) && !CAM_RE2.test(s); });
-  const visualOverview = nonCam[0] || sentences[0] || (isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene');
+  const visualOverview = nonCam[0] || sentences[0] || (isZh
+    ? (subject.product ? '主体静置于画面中，开始展现细节' : (subject.character ? '主体进入画面，建立场景' : '空间铺陈，氛围建立'))
+    : (subject.product ? 'the subject sits in frame, revealing initial details' : (subject.character ? 'the subject enters frame, establishing the scene' : 'space is laid out, atmosphere is established')));
   const prog = nonCam.slice(1);
 
   // 细分时间线（覆盖完整时长，无缺口）
@@ -2144,60 +2148,107 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   return out;
 }
 
-// 分镜卡片「直投提示词」专用：H3 标准开头 + 整体场景 + 分段时间线（镜头/相机/音频合并）+ 衔接/收尾
+// 分镜卡片「直投提示词」专用：海螺官方极简结构
+// 关键原则：①只写用户填的具体内容，不堆通用模板；②参考图对应关系用「第N张：类型」明确写出；
+// ③台词用 <d>[Chinese] ... </d> 严格按官方规则；④总长控制在 300-600 字内（用户写多少就是多少）
 // nextScene：下一镜（用于生成"衔接下一镜开头"指令；末镜传 null 表示收尾）
 function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene) {
-  // 英文 H3 标准格式（I2VA/T2VA 三字段 + [Shot N] 时间戳 + 中文台词 <d>[Chinese]）
+  // 英文路径保留旧的（另一台电脑版本）
   if (lang === 'en') {
     return buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene);
   }
   const isZh = lang === 'zh';
   const subject = detectSubject(scene, lang);
   const dur = scene.duration || 5;
-  const imgRefs = buildImageRefLine(refImages, isZh);
-  const article = (String(dur).charAt(0) === '8') ? 'an' : 'a';
-  const opening = isZh
-    ? ('生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频：\n')
-    : ('Generate ' + article + ' ' + dur + '-second, 16:9, 2K, native stereo, MiniMax H3 video:\n');
 
-  // V2 新增：全局风格与负面提示（每个镜头都携带，确保 H3 单次生成有完整上下文）
-  var globalHeader = '';
-  if (isZh) {
-    globalHeader =
-      '\n=== 全局风格与一致性锁定 ===\n' +
-      '分辨率要求：1080p 以上（2K），16:9 画幅。\n' +
-      lockClauseZh(subject) + '\n' +
-      '视觉质感：写实电影质感，材质细腻真实，光影过渡自然，色调统一高级，无塑料感与过度磨皮。\n' +
-      '负面约束：卡通/动漫/Q版/低幼风格；现代服装或现代建筑；塑料皮肤或过度磨皮；模糊面部或五官畸形；嘴型错误或口型不同步；两人同时说话或说话者错误；无关人物开口；人物融合/换脸/变装；多余人物或多余肢体；夸张表演或廉价特效；镜头乱晃或频繁闪烁；画面中出现任何字幕/文字/水印。\n' +
-      (refImages && refImages.length ? ('素材锚定：' + refImages.map(function(r,i){ return '<图' + (i+1) + '> = ' + (r.type || '参考') + (r.desc ? ('（' + r.desc + '）') : ''); }).join('；') + '。\n') : '') +
-      (refImages && refImages.length ? '参考图使用规则：<Picture 1> 严格作为本段第 0 秒首帧（只参考其外观/服装/构图，不继承多余元素）；<Picture 2> 及之后仅用于建立产品/环境，不照搬其构图。\n' : '');
-  } else {
-    globalHeader =
-      '\n=== Global Style & Character Lock ===\n' +
-      'Resolution: 1080p+ (2K), 16:9 aspect ratio.\n' +
-      lockClauseEn(subject) + '\n' +
-      'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen.\n';
+  // ---- 1. 开头（秒数/画幅/分辨率/参考图对应）----
+  // 海螺官方极简风格：单行说清"时长+画幅+分辨率+立体声+引擎"，再用「@image#N」明确参考图顺序
+  let header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
+
+  // 参考图绑定（按上传顺序：第1张=人物，第2张=产品，第3张=场景——这是用户上轮确认的映射）
+  if (refImages && refImages.length) {
+    refImages.forEach(function(r, i) {
+      const num = i + 1;
+      const t = r.type || (i === 0 ? '人物' : i === 1 ? '产品/设备' : '场景');
+      header += '@image#' + num + ' = ' + (r.desc || t) + '\n';
+    });
   }
-  const core = buildShotBriefCore(scene, lang, index);
 
-  // 衔接 / 收尾指令
+  // ---- 2. 主体与画面（用用户填的内容，不替换）----
+  // 优先级：visualOverview > subject + action + environment
+  let main = '';
+  const vo = (scene.visualOverview || '').trim();
+  if (vo) {
+    main = vo;
+  } else {
+    // 没有 visualOverview 时，把 subject/action/environment 拼起来
+    const parts = [];
+    if (scene.subject) parts.push(scene.subject);
+    if (scene.action) parts.push(scene.action);
+    if (scene.environment) parts.push('于' + scene.environment);
+    main = parts.join('，');
+  }
+  if (!main) {
+    main = isZh ? '一个简洁的画面' : 'A simple frame';
+  }
+
+  // 运镜（用户填则用用户填的，否则给一个温和的默认）
+  const cam = (scene.cameraMovement || '').trim();
+  const camClause = cam ? ('，' + cam) : '，镜头以中等速度从侧方跟拍';
+
+  // 视觉风格（写实/戏剧光/暖光等）
+  const vs = (scene.visualStyle || '').trim();
+  const styleClause = vs ? (' 视觉风格：' + vs) : '';
+  // 拼接主体+运镜+风格：处理 camClause 末尾标点，避免"跟拍。。视觉"双句号
+  const mainEndsWithPunc = /[。.,，；！？]$/.test(main);
+  const camEndsWithPunc = /[。.]$/.test(cam);
+  let body;
+  if (mainEndsWithPunc) {
+    body = main + (cam ? (' ' + cam) : '，镜头以中等速度从侧方跟拍') + '。' + styleClause + '\n';
+  } else {
+    body = main + (cam ? ('，' + cam) : '，镜头以中等速度从侧方跟拍') + (camEndsWithPunc ? '' : '。') + styleClause + '\n';
+  }
+
+  // ---- 3. 时间线（4 段细分，避免被 H3 当成"模糊描述"忽略）----
+  // 用户没填时间线时，按官方推荐的"建立→细节/推进→沉浸→收束"四段生成
+  const bounds = splitDuration(dur);
+  const segs = [];
+  for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
+  const beats = genBeats(scene, 'zh', segs, subject);
+
+  body += '\n时间线：\n';
+  for (let i = 0; i < segs.length; i++) {
+    const range = fmtTimecode(segs[i][0]) + '-' + fmtTimecode(segs[i][1]);
+    const visual = beats[i] && beats[i].visual ? beats[i].visual : (isZh ? '动作持续推进' : 'action continues');
+    body += range + '：' + visual + '。\n';
+  }
+
+  // ---- 4. 台词（核心：用户填了画外音/对白就用 <d>[Chinese] 标签）----
+  const voiceover = (scene.voiceover || scene.dialogue || scene.dialogueLine || '').trim();
+  if (voiceover) {
+    body += '\n声音：' + (scene.hasVoiceover === false ? '纯环境声，无对白。' : '主体清晰口播：<d>[Chinese] ' + voiceover + ' </d>，口型与台词严格同步。');
+  } else if (scene.soundscapeZh) {
+    body += '\n声音：' + scene.soundscapeZh + '。';
+  } else {
+    body += '\n声音：自然环境声，主体清晰可闻。';
+  }
+
+  // ---- 5. 衔接/收尾（单句，不写模板化大段）----
   let tail = '';
   if (nextScene) {
     const nextOpening = deriveOpening(nextScene, lang);
-    tail = isZh
-      ? ('\n【衔接要求】本镜头结尾的画面主体姿态、构图与色调，必须能自然无缝衔接下一镜的开头：「' + nextOpening + '」。两段之间不加黑场，用连续运镜或匹配剪辑衔接，确保成片流畅不跳切。')
-      : ('\n【Continuity】The ending of this shot must seamlessly connect to the opening of the next shot: "' + nextOpening + '". No black frames; use continuous camera motion or a match cut so the final edit flows without jumps.');
+    tail = '\n\n衔接：镜头结尾需自然衔接下一镜「' + nextOpening + '」，不加黑场。';
   } else {
     tail = isZh
-      ? ('\n【收尾】' + (subject.product
-          ? '本镜头结尾定格在产品稳定运行/静置状态，构图完整均衡，光影均匀柔和，清晰传递产品核心功能与品质感。'
+      ? '\n\n收尾：' + (subject.product
+          ? '产品稳定运行/静置，构图均衡定格。'
           : subject.character
-          ? '本镜头结尾人物状态稳定，表情与姿态自然定格，画面干净收束。'
-          : '本镜头结尾镜头稳定落定，空间与氛围完整呈现，自然收束全片。'))
-      : '\n【Closing】End on a stable, readable frame that naturally closes the film.';
+          ? '人物状态稳定收束，表情与姿态自然定格。'
+          : '镜头稳定落定，画面自然收束。')
+      : '\n\nThe shot ends on a stable, readable frame.';
   }
 
-  return imgRefs + globalHeader + opening + core + (refNote || '') + tail;
+  return header + body + tail;
 }
 
 // 参考图类型 → 英文（用于英文提示词）
