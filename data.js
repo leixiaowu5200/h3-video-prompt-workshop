@@ -2197,7 +2197,7 @@ function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextSc
       : '\n【Closing】End on a stable, readable frame that naturally closes the film.';
   }
 
-  return imgRefs + opening + core + (refNote || '') + tail;
+  return imgRefs + globalHeader + opening + core + (refNote || '') + tail;
 }
 
 // 参考图类型 → 英文（用于英文提示词）
