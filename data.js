@@ -1170,7 +1170,9 @@ function generateScenePrompt(ctx, scene) {
     musicZh: musicZh,
     promptZh: promptZh,
     aspectRatio: ctx.aspectRatio,
-    colorGrading: ctx.colorGrading
+    colorGrading: ctx.colorGrading,
+    colorGradingZh: ctx.colorGradingZh,
+    lightingDescZh: ctx.lightingDescZh
   };
 
   return sceneData;
@@ -1664,20 +1666,29 @@ function buildSubjectRefDesc(ctx, scene, isZh) {
 }
 
 // ===== 辅助：从镜头画面描述中提炼具体场景类型 =====
+// 匹配优先级从高到低：越具体的场景类型越先匹配；兜底给通用描述而非强行归类
 function extractSceneTypeZh(visualText) {
   const txt = visualText.toLowerCase();
-  if (/伏案|办公|键盘|工位|电脑前|写字楼|加班|忙碌.*一天|上班族/.test(txt)) return '🏢 办公室/工位环境图（桌椅、电脑可见，自然光或室内灯光）';
-  if (/居家|客厅|卧室|家中|家里|沙发|床|厨房|阳台|家庭|温馨|日常体验|居家养生/.test(txt)) return '🏠 居家客厅/卧室环境图（生活化布置，柔和光线）';
-  if (/户外|阳光|公园|街道|城市|自然光|室外|蓝天|绿植/.test(txt)) return '🌳 户外自然环境图（白天自然光，公园/街道/庭院一角）';
-  if (/水疗|养生|调理|理疗|按摩|汗蒸|SPA|浴场|康养/.test(txt)) return '💆 水疗/养生场馆环境图（理疗室或设备使用区域）';
-  if (/店铺|商场|橱窗|货架|购物|展示|卖场|门店/.test(txt)) return '🏪 店铺/展厅环境图（产品陈列区，明亮整洁）';
+  // 第一梯队：强信号词（几乎不会误判）
+  if (/水疗|养生|调理|理疗|按摩|汗蒸|SPA|浴场|康养|超声水疗/.test(txt)) return '💆 水疗/养生场馆环境图（理疗室或设备使用区域）';
   if (/医院|诊所|诊室|医生|护士|检查|治疗|康复/.test(txt)) return '🏥 医疗/康复环境图（专业洁净感）';
   if (/健身房|运动|训练|跑步|器械|瑜伽/.test(txt)) return '🏋️ 健身房/运动空间环境图';
   if (/教室|学校|培训|学习|讲课/.test(txt)) return '🎓 教室/培训空间环境图';
   if (/餐厅|咖啡|用餐|美食|厨房/.test(txt)) return '🍽️ 餐厅/餐饮环境图';
-  if (/工厂|车间|生产线|制造/.test(txt)) return '🏭 工厂/生产环境图';
-  const fp = (visualText.match(/[^。，。\n]{8,40}/) || [''])[0];
-  if (fp) return '🖼️ 与本镜头匹配的环境图：「' + fp.slice(0,30) + '」——找氛围接近的实景照片';
+
+  // 第二梯队：中等信号词（需要更多上下文才判定）
+  if (/伏案|办公|键盘|工位|电脑前|写字楼|加班|上班族/.test(txt)) return '🏢 办公室/工位环境图（桌椅、电脑可见，自然光或室内灯光）';
+  if (/居家|客厅|卧室|家中|家里|沙发|床|家庭|居家养生/.test(txt)) return '🏠 居家客厅/卧室环境图（生活化布置，柔和光线）';
+  if (/户外|公园|街道|庭院|自然光.*室外|蓝天|绿植/.test(txt)) return '🌳 户外自然环境图（白天自然光，公园/街道/庭院一角）';
+  if (/店铺|商场|橱窗|货架|购物|卖场|门店|展厅陈列/.test(txt)) return '🏪 店铺/展厅环境图（产品陈列区，明亮整洁）';
+
+  // 第三梯队：弱信号词（仅在有明确上下文时匹配，避免误判）
+  // 工厂/车间：必须出现"工厂"或"车间"或"生产线"本身，单凭"制造"不判定
+  if (/工厂|车间|生产线/.test(txt)) return '🏭 工厂/生产环境图';
+
+  // 兜底：不强行归类，给出通用描述 + 画面片段供用户参考
+  const fp = (visualText.match(/[^。，。\n]{10,50}/) || [''])[0];
+  if (fp) return '🖼️ 与本镜头匹配的环境图：「' + fp.slice(0,35) + '」——找氛围接近的实景照片';
   return '🖼️ 本镜头所需的环境参考图（实景照片）';
 }
 
@@ -1878,14 +1889,14 @@ function detectSubject(scene, lang) {
 function lockClauseZh(subject) {
   const p = [];
   if (subject.character) p.push('角色一致性：画面中人物五官、发型、服装、身材比例保持完全一致，不换脸、不变装、不融合人物特征');
-  if (subject.product) p.push('主体一致性：设备造型、材质、标识与结构细节保持完全一致，无变形、无多余元素增减');
+  if (subject.product) p.push('主体一致性：设备造型、材质、标识与结构细节保持完全一致，无变形、无多余元素增减。⚠️ 品牌标识铁律：产品上可见的品牌名称（如 MOYA）、型号标签（如 iSPA）、logo 图形、屏幕文字、控制面板字符等所有文字/符号必须与参考图**逐字一致**，禁止猜测、替换、改写或生成不存在的新文字');
   if (subject.scene || p.length === 0) p.push('场景一致性：空间陈设与光影基调保持统一稳定');
   return p.join('；') + '。';
 }
 function lockClauseEn(subject) {
   const p = [];
   if (subject.character) p.push('Character consistency: preserve face, hairstyle, costume and body proportions; no face-swap, wardrobe change or feature blending');
-  if (subject.product) p.push('Subject consistency: product geometry, material, logo and structural details stay fully consistent - no deformation, no added or removed elements');
+  if (subject.product) p.push('Subject consistency: product geometry, material, logo and structural details stay fully consistent - no deformation, no added or removed elements. ⚠️ Brand identity iron rule: ALL visible text on the product — brand names (e.g. MOYA), model labels (e.g. iSPA), logo graphics, screen text, control panel characters — must match the reference image EXACTLY character-by-character. NEVER guess, substitute, rewrite or generate new/nonexistent text.');
   if (subject.scene || p.length === 0) p.push('Scene consistency: space, set dressing and lighting base stay uniform and stable');
   return p.join('; ') + '.';
 }
@@ -2167,6 +2178,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
     const partial = [];
     for (let i = 1; i < imgs.length; i++) partial.push('<Picture ' + (i + 1) + '>');
     if (partial.length) line += ' ' + partial.join(' and ') + ' are partially referenced to establish the product and environment.';
+    line += ' ⚠️ Preserve ALL product details from the reference image exactly: brand names, model labels, logo graphics, screen text, control panel characters — every visible character must remain unchanged. Do not invent, guess or modify any text on the product.';
     instruction = line + '\n\n';
   }
 
@@ -2197,7 +2209,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const enGlobal = '=== Global Style & Consistency ===\n' +
     'Resolution: 1080p+ (2K), ' + (scene.aspectRatio || '16:9') + ' aspect ratio.\n' +
     lockClauseEn(enSubject) + '\n' +
-    'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen.\n\n';
+    'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen. ⚠️ CRITICAL: NEVER alter, guess or replace ANY visible text/brand/logo on the product — keep every character exactly as shown in the reference image.\n\n';
 
   const camEn = scene.cameraMovement || 'the camera moves naturally';
   const camSentence = camEn.charAt(0).toLowerCase() + camEn.slice(1);

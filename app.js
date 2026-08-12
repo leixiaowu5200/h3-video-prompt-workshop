@@ -20,7 +20,7 @@ const state = {
   formData: {},
   fullRefZh: '',
   fullRefEn: '',
-  lang: 'en', // 'zh' | 'en'  默认英文 —— H3 主要识别英文，用户点「中文」切换查看
+  lang: 'zh', // 'zh' | 'en'  默认中文（中国用户）；H3 提示词正文仍可切英文输出
   productFlow: { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() }
 };
 
@@ -905,9 +905,9 @@ function createSceneCard(scene, index, startSec) {
         <span>${scene.directorNote}</span>
       </div>
       <div class="tech-grid">
-        <div class="tech-item"><div class="t-label">运镜</div><div class="t-value">${scene.cameraMovement}</div></div>
-        <div class="tech-item"><div class="t-label">光影</div><div class="t-value">${scene.lighting}</div></div>
-        <div class="tech-item"><div class="t-label">色彩</div><div class="t-value">${scene.colorGrading}</div></div>
+        <div class="tech-item"><div class="t-label">运镜</div><div class="t-value">${isZh ? ((typeof CAM_ZH !== 'undefined' && CAM_ZH[scene.cameraMovement]) || scene.cameraMovement || '自然运镜') : (scene.cameraMovement || '自然运镜')}</div></div>
+        <div class="tech-item"><div class="t-label">光影</div><div class="t-value">${isZh ? ((typeof LIGHT_ZH !== 'undefined' && LIGHT_ZH[scene.lighting]) || scene.lighting || '自然光') : (scene.lighting || '自然光')}</div></div>
+        <div class="tech-item"><div class="t-label">色彩</div><div class="t-value">${isZh ? (scene.colorGradingZh || scene.colorGrading || '精致调色') : (scene.colorGrading || '精致调色')}</div></div>
         <div class="tech-item"><div class="t-label">画面文字</div><div class="t-value">${scene.textOverlay ? '有' : '无'}</div></div>
       </div>
       ${scene.dialogueLine ? `<div class="dialogue-box"><span class="label">台词 / 配音</span><span class="dialogue-text">${escapeHtml(scene.dialogueLine)}</span></div>` : ''}
