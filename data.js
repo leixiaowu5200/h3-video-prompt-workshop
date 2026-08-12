@@ -1626,6 +1626,13 @@ function generateStoryboard(formData) {
     data.dialogueLine = sceneCtx.dialogueLine; // 透传台词，供 buildShotBlock 使用
     data.shotIndex = i; // 记录序号，供参考图 scope 等使用
     data.marketingStyle = formData.marketingStyle || 'none'; // 营销优化层（小红书/抖音），供 buildShotBrief 注入种草调性
+    data.flow = formData.flow || 'auto'; // 流程：auto 通用 | wen 文戏 | action 武戏 | grid 九宫格
+    data.relationFrom = formData.relationFrom || '';
+    data.relationTo = formData.relationTo || '';
+    data.coreProp = formData.coreProp || '';
+    data.dialogueLang = formData.dialogueLang || '中文';
+    data.opponent = formData.opponent || '';
+    data.equipBound = formData.equipBound || '';
     scenes.push(data);
   }
   return scenes;
@@ -2171,155 +2178,258 @@ const MARKETING_STYLES = {
   }
 };
 
-// 分镜卡片「直投提示词」专用：海螺官方极简结构
-// 关键原则：①只写用户填的具体内容，不堆通用模板；②参考图对应关系用「第N张：类型」明确写出；
-// ③台词用 <d>[Chinese] ... </d> 严格按官方规则；④总长控制在 300-600 字内（用户写多少就是多少）
+// 分镜卡片「直投提示词」中文路径：七段式导演简报（贴合 MiniMax H3 三流程总模板）
+// 七段：①影片目标与核心概念 ②人物/主体与一致性锁定 ③0-dur时间线(无缺口) ④摄影/表演/动作规则 ⑤视觉风格与材质 ⑥声音设计 ⑦收束
+// 关键原则：①保留 @image#N = 描述（H3 可解析的参考图绑定，勿改成 @图片N作为XX）；②台词用 <d>[Chinese] ... </d>；
+// ③全正向描述；④营销层（小红书/抖音）仅叠加钩子/调性/CTA；⑤flow 决定各段内容侧重（auto/wen/action，grid 走 buildNineGrid）
 // nextScene：下一镜（用于生成"衔接下一镜开头"指令；末镜传 null 表示收尾）
-function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene) {
-  // 英文路径保留旧的（另一台电脑版本）
-  if (lang === 'en') {
-    return buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene);
+// ========== 中文「导演简报」七段式（贴合 MiniMax H3 三流程总模板）==========
+// 七段：①影片目标与核心概念 ②人物/主体与一致性锁定 ③0-dur时间线(无缺口) ④摄影/表演/动作规则 ⑤视觉风格与材质 ⑥声音设计 ⑦收束
+// flow: 'auto' 通用 | 'wen' 文戏 | 'action' 武戏（'grid' 九宫格由 buildNineGrid 专有处理）
+function fmtRange(s, e) {
+  const a = fmtTimecode(s).replace(/\.\d+$/, '');
+  const b = fmtTimecode(e).replace(/\.\d+$/, '');
+  return a + '–' + b;
+}
+
+// 文戏各段时间线阶段标签
+function wenLabels(n) {
+  const all = ['建立关系与空间', '核心证据/道具出现', '对方回应与消化', '主角决定', '行为结果与情绪余波'];
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(all[Math.min(i, all.length - 1)]);
+  return out;
+}
+
+// 武戏：高密度攻防因果链（默认 14 个有效动作，可被表单 opponent/equipBound/environment 参数化）
+function actionBeatsZh(scene, subject) {
+  const opp = (typeof scene.opponent === 'string' && scene.opponent.trim()) || '对手';
+  const eq = (typeof scene.equipBound === 'string' && scene.equipBound.trim()) || '近身装备';
+  const envWord = (typeof scene.environment === 'string' && scene.environment.trim()) || '场景';
+  return [
+    '起势：主角重心下沉，' + eq + '横置胸前，眼神锁定' + opp,
+    '先手试探：一个小幅虚刺逼出' + opp + '第一反应',
+    '第一次交换：格挡相抵、火花迸发，双方各退半步重整',
+    opp + '升级攻势，连续两记重斩压迫主线',
+    '主角借力旋身，以' + envWord + '中障碍物为支点翻越',
+    '环境互动：撞落' + envWord + '器物，碎片改变走位',
+    '主角受困：被逼至墙角，护架出现裂痕',
+    '脱困反制：贴墙反弹，一记低位扫踢夺回控制权',
+    '追击：顺势突进，' + eq + '划过' + opp + '装备连接处',
+    opp + '失衡后撤，撞上' + envWord + '结构',
+    '终结动作：主角上前一步，精准命中并借势卸力',
+    opp + '物理反应：受力后撤、失衡倒地',
+    '结果落地：主角稳住身形，' + eq + '归位，胜负明确',
+    '余势：镜头掠过' + envWord + '中静止的碎片，确认局面'
+  ];
+}
+
+// ① 核心概念（按 flow 侧重）
+function buildConceptZh(scene, subject, flow, mk, index) {
+  const dur = scene.duration || 15;
+  const subj = (typeof scene.subject === 'string' && scene.subject.trim()) || (subject.character ? '主角' : subject.product ? '产品主体' : '场景主体');
+  const env = (typeof scene.environment === 'string' && scene.environment.trim()) || '';
+  let c = '影片目标与核心概念：';
+  if (flow === 'wen') {
+    c += '本次讲述一次清楚的关系变化——从「' + (scene.relationFrom || '关系现状') + '」走向「' + (scene.relationTo || '关系转折') + '」，由画面中的核心证据/道具（' + (scene.coreProp || '关键物件') + '）触发，并在 ' + dur + ' 秒内完成一次可被摄影机看懂的情绪转折。';
+  } else if (flow === 'action') {
+    c += (subject.character ? '主角' : '主体') + '对阵' + (scene.opponent || '对手') + '，以' + (scene.equipBound || '现有装备与空间') + '构建完整战斗因果链；每一招都改变距离、姿态、控制权或环境，而非装饰性堆叠。';
+  } else {
+    c += subj + (env ? ('于' + env) : '') + '中，完成一段信息清晰、主体一致的' + (subject.product ? '产品展示' : '叙事片段') + '。';
   }
-  const isZh = lang === 'zh';
-  const subject = detectSubject(scene, lang);
-  const dur = scene.duration || 5;
-  // 营销优化层：小红书种草 / 抖音快节奏（仅中文路径注入；英文路径保留另一台电脑版本不动）
-  const mk = (isZh && typeof scene.marketingStyle === 'string' && MARKETING_STYLES[scene.marketingStyle])
-    ? scene.marketingStyle : 'none';
+  if (mk !== 'none' && index === 0) {
+    const M = MARKETING_STYLES[mk];
+    c += '\n' + M.toneZh + '\n' + M.hookZh;
+  }
+  return c;
+}
 
-  // ---- 1. 开头（秒数/画幅/分辨率/参考图对应）----
-  // 海螺官方极简风格：单行说清"时长+画幅+分辨率+立体声+引擎"，再用「@image#N」明确参考图顺序
+// ② 一致性锁定
+function buildLockZh(scene, subject, flow) {
+  let s = '人物/主体与一致性锁定：';
+  const subj = (typeof scene.subject === 'string' && scene.subject.trim()) || '';
+  const act = (typeof scene.action === 'string' && scene.action.trim()) || '';
+  const env = (typeof scene.environment === 'string' && scene.environment.trim()) || '';
+  if (subj) s += '固定主体：' + subj + '；';
+  if (act) s += '核心动作：' + act + '；';
+  if (env) s += '固定场景：' + env + '；';
+  s += lockClauseZh(subject);
+  if (flow === 'action') s += ' 双方轮廓、尺寸、装备、惯用手与空间位置全程一致，面孔与体型不漂移。';
+  else if (flow === 'wen') s += ' 人物身份、服装、关系距离与关键道具在 ' + (scene.duration || 15) + ' 秒内保持连贯，微表情前后连续。';
+  return s;
+}
+
+// ③ 时间线（无缺口覆盖全程；武戏高密度，文戏分阶段）
+function buildTimelineZh(scene, subject, dur, flow) {
+  const bounds = splitDuration(dur);
+  const segs = [];
+  for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
+  const lines = ['0—' + dur + '秒时间线（无缺口覆盖全程）：'];
+  if (flow === 'action') {
+    const beats = actionBeatsZh(scene, subject);
+    const per = Math.ceil(beats.length / segs.length);
+    let k = 0;
+    for (const seg of segs) {
+      const slice = beats.slice(k, k + per);
+      k += per;
+      if (!slice.length) break;
+      lines.push(fmtRange(seg[0], seg[1]) + '：' + slice.join('；') + '。');
+    }
+  } else {
+    const beats = genBeats(scene, 'zh', segs, subject);
+    const labels = (flow === 'wen') ? wenLabels(segs.length) : null;
+    for (let i = 0; i < segs.length; i++) {
+      let v = (beats[i] && beats[i].visual) ? beats[i].visual : '动作持续推进';
+      if (labels && labels[i]) v = labels[i] + '——' + v;
+      lines.push(fmtRange(segs[i][0], segs[i][1]) + '：' + v + '。');
+    }
+  }
+  return lines.join('\n');
+}
+
+// ④ 摄影/表演/动作规则
+function buildRulesZh(scene, subject, flow) {
+  let s = '摄影/表演/动作规则：';
+  if (flow === 'wen') {
+    s += '中近景与特写只保留 2–3 个协同表演信号（目光停顿、呼吸变化、未完成的手部动作、身体重心变化），微表情前后连续；每次切镜由新信息、说话权变化、视线目标或距离变化触发，不按每句台词机械正反打；对白语言为' + (scene.dialogueLang || '中文') + '，口型与台词严格同步。';
+  } else if (flow === 'action') {
+    s += '上一招未完全收回时下一招已启动；格挡后的受力直接转化为翻越、旋转、位移或反斩；环境互动必须改变战斗局面而非背景特效；允许硬切，切点落在接触、遮挡、落地或方向匹配处；每组连招保持一个主要运动方向，仅真实换向或借墙反弹时改变摄影轴线；火花与碎片只强化已发生的攻击。';
+  } else {
+    const cam = (typeof CAM_ZH !== 'undefined' && CAM_ZH[(scene.cameraMovement || '').trim()]) ? CAM_ZH[(scene.cameraMovement || '').trim()] : '自然运镜';
+    s += '默认允许硬切、匹配剪辑与尺度跳切，连续感来自主体、空间轴线、色彩母题与声音桥；运镜以「' + cam + '」为基础渐进变化，不每镜重复同一句；镜头始终清晰呈现主体与动作。';
+  }
+  return s;
+}
+
+// ⑤ 视觉风格与材质
+const COLOR_ZH = { 'warm': '暖调', 'cool': '冷调', 'teal-orange': '青橙调', 'monochrome': '单色调', 'neutral': '中性调', 'high-contrast': '高反差', 'golden': '金调', 'sepia': '复古褐调' };
+function buildVisualZh(scene, subject, flow) {
+  const vs = (scene.visualStyle || '').trim();
+  const light = (scene.lighting || '').trim();
+  const cg = (scene.colorGrading || '').trim();
+  const parts = [];
+  if (vs) parts.push(vs);
+  if (light && typeof LIGHT_ZH !== 'undefined' && LIGHT_ZH[light]) parts.push(LIGHT_ZH[light]);
+  else if (light) parts.push(light);
+  if (cg) {
+    if (/^[a-z]/i.test(cg) && typeof COLOR_ZH !== 'undefined' && COLOR_ZH[cg]) parts.push(COLOR_ZH[cg]);
+    else if (!/^[a-z]/i.test(cg)) parts.push(cg + '色调');
+  }
+  if (!parts.length) parts.push('写实质感');
+  let s = '视觉风格与材质：' + parts.join('、') + '；';
+  if (subject.product) s += '产品材质、结构与标识清晰可辨，表面质感写实，无塑料感或过度磨皮。';
+  else if (subject.character) s += '人物皮肤与服装材质写实，光影塑造体积感。';
+  else s += '空间材质与光影基调统一，画面有纵深。';
+  return s;
+}
+
+// ⑥ 声音设计
+function buildSoundZh(scene, subject, flow) {
+  const ss = (typeof scene.soundscapeZh === 'string' && scene.soundscapeZh.trim()) ? scene.soundscapeZh.trim().replace(/[。.,，；！？]+$/, '') : '贴合画面的自然环境底噪';
+  const music = (typeof scene.musicZh === 'string' && scene.musicZh.trim()) ? scene.musicZh.trim() : '';
+  const dlg = (typeof scene.dialogueLine === 'string' && scene.dialogueLine.trim()) ? scene.dialogueLine.trim() : '';
+  let s = '声音设计：环境音：' + ss + '；';
+  if (music) s += '配乐：' + music + '（音量永不超过人声 40%，台词出现时主动让位或暂停）；';
+  else s += '配乐：无；';
+  if (dlg) s += '人声：主体清晰口播 <d>[' + (scene.dialogueLang === '英文' ? 'English' : 'Chinese') + '] ' + dlg + ' </d>，口型与台词严格同步。';
+  else s += '人声：以环境音与配乐为主（本段无台词）。';
+  return s;
+}
+
+// ⑦ 收束（含营销 CTA）
+function buildEndingZh(scene, subject, flow, nextScene, mk) {
+  if (nextScene) {
+    const nx = deriveOpening(nextScene, 'zh');
+    return '收束：镜头结尾自然衔接下一镜「' + nx + '」，不加黑场。';
+  }
+  let s = '收束：';
+  if (flow === 'wen') s += '保留 0.5–1.2 秒呈现行为后果或表情余波，让最后一秒继续提供新的情绪信息，关系变化明确落地。';
+  else if (flow === 'action') s += '终结动作包含命中、对手的物理反应、主角卸力与明确结果，不在命中瞬间直接跳到胜利姿势；画面稳定定格，胜负清晰。';
+  else s += (subject.product ? '产品稳定运行/静置，构图均衡定格，强化视觉记忆点。' : subject.character ? '人物状态稳定收束，表情与姿态自然定格。' : '镜头稳定落定，画面自然收束。');
+  if (mk !== 'none') {
+    const M = MARKETING_STYLES[mk];
+    s += '\n\n' + (subject.character ? M.ctaZh : M.ctaNoPersonZh);
+  }
+  return s;
+}
+
+// 中文「导演简报」七段式主函数
+function buildShotBriefZh(scene, index, startSec, refImages, nextScene) {
+  const subject = detectSubject(scene, 'zh');
+  const dur = scene.duration || 15;
+  const flow = scene.flow || 'auto';
+  const mk = (typeof scene.marketingStyle === 'string' && MARKETING_STYLES[scene.marketingStyle]) ? scene.marketingStyle : 'none';
+
   let header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
-
-  // 参考图绑定（按上传顺序：第1张=人物，第2张=产品，第3张=场景——这是用户上轮确认的映射）
   if (refImages && refImages.length) {
-    refImages.forEach(function(r, i) {
+    refImages.forEach(function (r, i) {
       const num = i + 1;
       const t = r.type || (i === 0 ? '人物' : i === 1 ? '产品/设备' : '场景');
       header += '@image#' + num + ' = ' + (r.desc || t) + '\n';
     });
   }
 
-  // ---- 2. 主体与画面（用用户填的内容，不替换）----
-  // 优先级：visualOverview > subject+action+environment > visualZhBase（zhdata.js 模板的画面描述）
-  // 注意：scene.voiceover 是布尔值，不是文本；台词在 scene.dialogueLine
-  let main = '';
-  const vo = (typeof scene.visualOverview === 'string' ? scene.visualOverview : '').trim();
-  if (vo) {
-    main = vo;
-  } else {
-    // 没有 visualOverview 时，把 subject/action/environment 拼起来
-    const parts = [];
-    if (typeof scene.subject === 'string' && scene.subject.trim()) parts.push(scene.subject.trim());
-    if (typeof scene.action === 'string' && scene.action.trim()) parts.push(scene.action.trim());
-    if (typeof scene.environment === 'string' && scene.environment.trim()) parts.push('于' + scene.environment.trim());
-    main = parts.join('，');
-  }
-  // 仍空：用 scene.visualZhBase（zhdata.js 模板生成的中文画面描述）提取首句作主体概述
-  if (!main) {
-    const vzh = (typeof scene.visualZhBase === 'string' ? scene.visualZhBase : '')
-      || (typeof scene.visualZh === 'string' ? scene.visualZh : '');
-    if (vzh) {
-      // 去掉 [镜头1] 标记、英文美学控制括号、模板自带的画外音标签
-      const cleaned = cleanVisualForSpeech(vzh.replace(/^\s*\[(?:Shot|镜头)\s*\d+\]\s*/i, ''));
-      // 只取首句作主体概述（避免与后面独立的 camClause 重复）
-      const firstSentence = cleaned.split(/[。]/).map(s => s.trim()).filter(Boolean)[0];
-      main = (firstSentence || '') + '。';
-    }
-  }
-  if (!main) {
-    main = isZh ? '一个简洁的画面' : 'A simple frame';
-  }
+  const concept = buildConceptZh(scene, subject, flow, mk, index);
+  const lock = buildLockZh(scene, subject, flow);
+  const timeline = buildTimelineZh(scene, subject, dur, flow);
+  const rules = buildRulesZh(scene, subject, flow);
+  const visual = buildVisualZh(scene, subject, flow);
+  const sound = buildSoundZh(scene, subject, flow);
+  const tail = buildEndingZh(scene, subject, flow, nextScene, mk);
 
-  // 运镜：scene.cameraMovement 是英文，用 CAM_ZH 翻译表转中文；翻译不到就跳过（避免中英混杂）
-  let cam = '';
-  const rawCam = typeof scene.cameraMovement === 'string' ? scene.cameraMovement.trim() : '';
-  if (rawCam && typeof CAM_ZH !== 'undefined') {
-    cam = CAM_ZH[rawCam] || '';
-    if (!cam && /^the camera\b/i.test(rawCam)) {
-      const stripped = rawCam.replace(/^the camera\s+/i, '').toLowerCase().slice(0, 20);
-      for (const k in CAM_ZH) {
-        if (k.toLowerCase().includes(stripped)) { cam = CAM_ZH[k]; break; }
-      }
-    }
-  }
-  // 关键：main 已包含运镜描述（"镜头以..." / "中景镜头..."）就不再附加 camClause，避免重复
-  const mainHasCamera = /镜头|运镜|跟拍|推进|环绕|横移|固定|手持|拉远|推近|上升|下降/.test(main);
-  let camClause = '';
-  if (!mainHasCamera) {
-    if (cam) camClause = '，' + cam;
-    else camClause = '，镜头以中等速度从侧方跟拍';
-  }
+  return [header, concept, lock, timeline, rules, visual, sound, tail].filter(Boolean).join('\n\n') + '\n';
+}
 
-  // 视觉风格（写实/戏剧光/暖光等）
-  const vs = (scene.visualStyle || '').trim();
-  const styleClause = vs ? (' 视觉风格：' + vs) : '';
-  // 拼接：main + camClause（已按 mainHasCamera 抑制重复）+ styleClause
-  let body = main + camClause + styleClause + '\n';
-  // 标点清理：避免"透支。，" / "声音：...。。"类双标点
-  body = body.replace(/[。.,，；]+\s*[，；。]+/g, m => m.slice(-1)).replace(/[，。]\s*视觉/g, ' 视觉');
+// 分镜卡片「直投提示词」入口：英文保留旧版，中文走七段式导演简报
+function buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene) {
+  if (lang === 'en') {
+    return buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene);
+  }
+  return buildShotBriefZh(scene, index, startSec, refImages, nextScene);
+}
 
-  // ---- 3. 时间线（4 段细分，避免被 H3 当成"模糊描述"忽略）----
-  // 用户没填时间线时，按官方推荐的"建立→细节/推进→沉浸→收束"四段生成
+// ========== 九宫格模式（阶段A出图提示词 + 阶段B派生H3视频提示词）==========
+function buildNineGrid(formData) {
+  const dur = [5, 10, 15].includes(formData.shotDur) ? formData.shotDur : 15;
+  const subject = ((formData.productDesc || formData.brandName || '').trim()) || '主体';
+  const story = (typeof formData.story === 'string' ? formData.story : '').trim();
+  const cells = Array.isArray(formData.gridCells) ? formData.gridCells : [];
+
+  // 阶段A：3×3 故事板出图提示词（无图像工具时输出文本，不谎称已经生成）
+  const stageA = '【九宫格出图提示词】生成一张整体 16:9、2048×1152 的 3×3 故事板：九个等大宽银幕画格，使用细而整洁的中性分隔线。'
+    + '稳定主体「' + subject + '」的身份、服装、装备、材质与关键配色贯穿九格；镜位、景别、姿态与动作必须明显变化，九格不重复同一种构图。'
+    + (story ? ('故事线：' + story + '。') : '')
+    + '九格从左到右、从上到下依次承担：①建立 ②触发 ③升级 ④第一次变化 ⑤中段主体状态 ⑥第二次升级 ⑦高潮形成 ⑧接近完成 ⑨最终画面。';
+
+  // 阶段B：依据九格描述派生 H3 视频提示词
+  let stageB = '【九宫格派生 H3 视频提示词】生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
+  const refImages = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages) && formData.referenceImages.length)
+    ? formData.referenceImages : [];
+  if (refImages.length) {
+    refImages.forEach(function (r, i) {
+      stageB += '@image#' + (i + 1) + ' = ' + (r.desc || r.type || '参考图') + '\n';
+    });
+  }
+  stageB += '九宫格依据：按从左到右、从上到下对应 1—9 镜/状态，九格全部出现在视频中，中间格不被形变过程吞掉。\n';
   const bounds = splitDuration(dur);
   const segs = [];
   for (let i = 0; i < bounds.length - 1; i++) segs.push([bounds[i], bounds[i + 1]]);
-  const beats = genBeats(scene, 'zh', segs, subject);
-
-  body += '\n时间线：\n';
-  for (let i = 0; i < segs.length; i++) {
-    const range = fmtTimecode(segs[i][0]) + '-' + fmtTimecode(segs[i][1]);
-    let visual = beats[i] && beats[i].visual ? beats[i].visual : (isZh ? '动作持续推进' : 'action continues');
-    // 时间线第一段如果和 main 重复（都是"中景镜头，跟拍..."），改为推进描述，避免与 main 冗余
-    if (i === 0 && main && visual.indexOf(main.substring(0, 12)) >= 0) {
-      visual = isZh ? '主体进入画面，建立场景' : 'the subject enters frame, establishing the scene';
-    }
-    body += range + '：' + visual + '。\n';
+  const per = Math.max(1, Math.ceil(9 / segs.length));
+  let k = 0;
+  for (const seg of segs) {
+    const slice = cells.slice(k, k + per);
+    k += per;
+    if (!slice.length) break;
+    const desc = slice.map(function (c, j) {
+      const idx = (k - per + j + 1);
+      return '图' + idx + '：' + ((typeof c === 'string' && c.trim()) ? c.trim() : '对应关键画面');
+    }).join('；');
+    stageB += fmtRange(seg[0], seg[1]) + '：' + desc + '。\n';
   }
+  stageB += '每一格写出进入方式、画面中的主动作与离开方式，前后格通过动作方向、形状、颜色、道具、遮挡或声音关联；允许硬切，不强制一镜到底。\n';
+  stageB += '声音设计：贴合画面的自然环境底噪；若含台词，使用 <d>[Chinese] ... </d> 并口型同步。\n';
+  stageB += '收束：最终画面稳定定格，九格叙事完整落地。';
 
-  // ---- 3.5 营销优化（小红书/抖音）：种草调性 + 开场钩子（仅首镜）----
-  if (mk !== 'none') {
-    const M = MARKETING_STYLES[mk];
-    body += '\n' + M.toneZh;
-    if (index === 0) {
-      body += '\n' + M.hookZh;
-    }
-  }
-
-  // ---- 4. 台词（核心：用户填了画外音/对白就用 <d>[Chinese] 标签）----
-  // 注意：scene.voiceover 是布尔值（true/false），不是台词文本；台词文本在 scene.dialogueLine
-  const voiceover = (typeof scene.dialogueLine === 'string' ? scene.dialogueLine : '').trim();
-  if (voiceover) {
-    body += '\n声音：主体清晰口播：<d>[Chinese] ' + voiceover + ' </d>，口型与台词严格同步。';
-  } else if (typeof scene.soundscapeZh === 'string' && scene.soundscapeZh.trim()) {
-    // 去掉已有末尾标点再加"。"，避免"声音：...。。"
-    const ss = scene.soundscapeZh.trim().replace(/[。.,，；！？]+$/, '');
-    body += '\n声音：' + ss + '。';
-  } else {
-    body += '\n声音：自然环境声，主体清晰可闻。';
-  }
-
-  // ---- 5. 衔接/收尾（单句，不写模板化大段）----
-  let tail = '';
-  if (nextScene) {
-    const nextOpening = deriveOpening(nextScene, lang);
-    tail = '\n\n衔接：镜头结尾需自然衔接下一镜「' + nextOpening + '」，不加黑场。';
-  } else {
-    tail = isZh
-      ? '\n\n收尾：' + (subject.product
-          ? '产品稳定运行/静置，构图均衡定格。'
-          : subject.character
-          ? '人物状态稳定收束，表情与姿态自然定格。'
-          : '镜头稳定落定，画面自然收束。')
-      : '\n\nThe shot ends on a stable, readable frame.';
-    // 营销收尾（末镜）：有主角则口播互动引导；无主角则叠字幕感引导
-    if (mk !== 'none') {
-      const M = MARKETING_STYLES[mk];
-      tail += '\n\n' + (subject.character ? M.ctaZh : M.ctaNoPersonZh);
-    }
-  }
-
-  return header + body + tail;
+  return { stageA: stageA, stageB: stageB };
 }
 
 // 参考图类型 → 英文（用于英文提示词）

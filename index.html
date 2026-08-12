@@ -59,6 +59,52 @@
         <div class="flow-tip" id="flowTip"></div>
       </div>
 
+      <!-- 叙事流程（文戏 / 武戏 / 九宫格） -->
+      <div class="form-group">
+        <label>叙事流程 <span class="hint">先定流程再写提示词：文戏(关系/对白转折) · 武戏(攻防因果) · 九宫格(3×3关键画面)</span></label>
+        <div class="genmode-grid" id="flowGrid">
+          <div class="genmode-card active" data-flow="auto">
+            <div class="icon">🎞️</div><div class="name">通用</div><div class="desc">产品展示/叙事片段</div>
+          </div>
+          <div class="genmode-card" data-flow="wen">
+            <div class="icon">💬</div><div class="name">文戏</div><div class="desc">关系·对白·微表情</div>
+          </div>
+          <div class="genmode-card" data-flow="action">
+            <div class="icon">⚔️</div><div class="name">武戏</div><div class="desc">高密度攻防·反制</div>
+          </div>
+          <div class="genmode-card" data-flow="grid">
+            <div class="icon">🔲</div><div class="name">九宫格</div><div class="desc">先出3×3再生成</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 文戏专属字段 -->
+      <div class="form-group flow-panel" id="wenPanel" style="display:none;">
+        <label>文戏设定</label>
+        <input type="text" id="relationFrom" placeholder="关系起点，如：冷淡疏远">
+        <input type="text" id="relationTo" placeholder="关系终点，如：和解默契">
+        <input type="text" id="coreProp" placeholder="核心证据/道具（选填），如：一张旧合照">
+        <select id="dialogueLang">
+          <option value="中文">对白语言：中文</option>
+          <option value="英文">对白语言：英文</option>
+        </select>
+      </div>
+
+      <!-- 武戏专属字段 -->
+      <div class="form-group flow-panel" id="actionPanel" style="display:none;">
+        <label>武戏设定</label>
+        <input type="text" id="opponent" placeholder="对手描述，如：黑衣刺客">
+        <input type="text" id="equipBound" placeholder="主角装备/能力边界（选填），如：短刀">
+      </div>
+
+      <!-- 九宫格专属字段 -->
+      <div class="form-group flow-panel" id="gridPanel" style="display:none;">
+        <label>九宫格设定 <span class="hint">选九宫格后，生成将输出「3×3出图提示词 + 派生视频提示词」</span></label>
+        <textarea id="story" rows="2" placeholder="故事线（选填）：九宫格要讲的发展线"></textarea>
+        <div class="grid-cells" id="gridCells"><!-- 9 个输入框由 JS 生成 --></div>
+        <div class="field-tip">九格从左到右、从上到下依次：①建立 ②触发 ③升级 ④第一次变化 ⑤中段 ⑥第二次升级 ⑦高潮 ⑧接近完成 ⑨最终画面。可只填关键几格，留空处自动占位。</div>
+      </div>
+
       <!-- 生成模式：文生视频 / 图生视频 -->
       <div class="form-group">
         <label>生成模式 <span class="hint">文生视频 或 图生视频（需提供参考图）</span></label>
@@ -226,7 +272,7 @@
               <button class="help-item-head"><span>📝 分镜直投提示词结构</span><span class="help-item-arrow">▾</span></button>
               <div class="help-item-body">
                 <p><strong>1. H3 开头规格声明</strong> — 时长、画幅、2K、立体声、模型名</p>
-                <p><strong>2. 参考图前缀（图生视频）</strong> — <code>@图片1作为人物参考@图片2作为产品参考</code> 放绝对开头</p>
+                <p><strong>2. 参考图前缀（图生视频）</strong> — 每行一张 <code>@image#1 = 人物参考</code> / <code>@image#2 = 产品参考</code>，放绝对开头；编号 N 与你在海螺 H3 上传顺序严格一致</p>
                 <p><strong>3. 镜头描述</strong> — 主体、构图、运镜、光影、动作与台词</p>
                 <p><strong>4. 时间线细分</strong> — 切成若干段（如 0–3s、3–7s…），保证时长填满不空镜</p>
                 <p><strong>5. 衔接要求</strong> — 每段末尾自然衔接下一镜，末镜定格收尾</p>
@@ -239,7 +285,7 @@
               <div class="help-item-body">
                 <p><strong>先定流程再写提示词：</strong>文戏（关系/对白/微表情转折）、武戏（高密度攻防/受力反制）、九宫格（先出 3×3 关键画面再生成）。</p>
                 <p><strong>全局规格：</strong>{5/10/15}秒·16:9·2K·H3·原生立体声；全正向描述；时间段无缺口覆盖；连续≠一镜到底。</p>
-                <p><strong>图片引用前缀：</strong>有图时绝对开头一行 <code>@图片1作为XX@图片2作为XX</code></p>
+                <p><strong>图片引用前缀：</strong>有图时绝对开头按上传顺序写 <code>@image#1 = 人物参考</code> / <code>@image#2 = 产品参考</code>（N 与 H3 上传顺序一致）</p>
                 <p><strong>时长预算：</strong>5s→2-4段 / 6-10动作；10s→4-6段 / 10-16动作；15s→5-8段 / 14-20动作；结尾余波 0.3→1.2s 递增。</p>
                 <p><strong>完整合订版（所有规则可溯源）：</strong>见仓库根目录《H3提示词生成参考背书（最新合订版）.md》。</p>
               </div>

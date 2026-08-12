@@ -8,6 +8,10 @@ const state = {
   selectedIndustry: '',
   selectedStyle: 'cinematic',
   marketingStyle: 'none', // 'none' | 'xiaohongshu' | 'douyin' —— 营销优化层（小红书/抖音种草）
+  flow: 'auto', // 'auto' 通用 | 'wen' 文戏 | 'action' 武戏 | 'grid' 九宫格（贴合 H3 三流程总模板）
+  relationFrom: '', relationTo: '', coreProp: '', dialogueLang: '中文', // 文戏专属
+  opponent: '', equipBound: '', // 武戏专属
+  story: '', gridCells: [], // 九宫格专属
   selectedRatio: '16:9',
   shotDur: 15, // 单镜头时长（5 / 10 / 15 秒）
   genMode: 't2v', // 't2v' 文生视频 | 'i2v' 图生视频
@@ -35,6 +39,8 @@ function init() {
   });
   bindEvents();
   bindGenMode();
+  bindFlowSelector();
+  applyFlowUI(state.flow);
   bindInfoCards();
   // 主题切换初始化（恢复已选主题 + 绑定切换面板）
   initTheme();
@@ -532,6 +538,50 @@ function bindGenMode() {
     });
   });
 
+function bindFlowSelector() {
+  const grid = document.getElementById('flowGrid');
+  if (!grid) return;
+  grid.querySelectorAll('.genmode-card').forEach(card => {
+    card.addEventListener('click', () => {
+      applyFlowUI(card.dataset.flow);
+    });
+  });
+}
+
+// 统一设置流程并同步 UI（卡片高亮 + 专属面板 + 九宫格输入框）
+function applyFlowUI(flow) {
+  state.flow = flow || 'auto';
+  const grid = document.getElementById('flowGrid');
+  if (grid) grid.querySelectorAll('.genmode-card').forEach(c => c.classList.toggle('active', c.dataset.flow === state.flow));
+  updateFlowPanels();
+}
+
+function updateFlowPanels() {
+  const f = state.flow || 'auto';
+  const map = { wen: 'wenPanel', action: 'actionPanel', grid: 'gridPanel' };
+  ['wenPanel', 'actionPanel', 'gridPanel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (map[f] === id) ? 'block' : 'none';
+  });
+  if (f === 'grid') renderGridCells();
+}
+
+function renderGridCells() {
+  const mount = document.getElementById('gridCells');
+  if (!mount) return;
+  const labels = ['①建立', '②触发', '③升级', '④第一次变化', '⑤中段', '⑥第二次升级', '⑦高潮', '⑧接近完成', '⑨最终画面'];
+  mount.innerHTML = labels.map((lb, i) => {
+    const val = (Array.isArray(state.gridCells) && state.gridCells[i]) ? state.gridCells[i] : '';
+    return '<div class="grid-cell"><span class="gc-label">' + lb + '</span><input type="text" data-gc="' + i + '" value="' + escapeHtml(val) + '" placeholder="第' + (i + 1) + '格画面描述"></div>';
+  }).join('');
+  mount.querySelectorAll('input[data-gc]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const i = parseInt(inp.dataset.gc, 10);
+      state.gridCells[i] = inp.value;
+    });
+  });
+}
+
   const addBtn = document.getElementById('addRefImageBtn');
   if (addBtn) addBtn.addEventListener('click', () => {
     state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
@@ -629,7 +679,16 @@ function collectFormData() {
     referenceImages: state.referenceImages || [],
     dialogue: (document.getElementById('dialogue') ? document.getElementById('dialogue').value : '') || '',
     shotCount: parseInt((document.getElementById('shotCount') && document.getElementById('shotCount').value), 10) || 5,
-    shotDur: state.shotDur || 15
+    shotDur: state.shotDur || 15,
+    flow: state.flow || 'auto',
+    relationFrom: (document.getElementById('relationFrom') ? document.getElementById('relationFrom').value.trim() : '') || '',
+    relationTo: (document.getElementById('relationTo') ? document.getElementById('relationTo').value.trim() : '') || '',
+    coreProp: (document.getElementById('coreProp') ? document.getElementById('coreProp').value.trim() : '') || '',
+    dialogueLang: (document.getElementById('dialogueLang') ? document.getElementById('dialogueLang').value : '中文') || '中文',
+    opponent: (document.getElementById('opponent') ? document.getElementById('opponent').value.trim() : '') || '',
+    equipBound: (document.getElementById('equipBound') ? document.getElementById('equipBound').value.trim() : '') || '',
+    story: (document.getElementById('story') ? document.getElementById('story').value.trim() : '') || '',
+    gridCells: (Array.isArray(state.gridCells) ? state.gridCells.slice() : [])
   };
 }
 
@@ -709,12 +768,15 @@ function regeneratePrompts() {
 
 // ========== 渲染分镜 ==========
 function renderStoryboard() {
-  const lang = state.lang;
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('storyboardContent').style.display = 'block';
-
-  // 项目摘要
   renderProjectSummary();
+  // 九宫格模式：直接输出「3×3出图提示词 + 派生视频提示词」，不走逐镜头分镜
+  if ((state.formData.flow || 'auto') === 'grid') {
+    renderNineGridOutput();
+    return;
+  }
+  const lang = state.lang;
 
   const scenes = state.scenes;
   const n = scenes.length;
@@ -740,6 +802,34 @@ function renderStoryboard() {
   });
 }
 
+// ========== 九宫格模式输出（阶段A出图提示词 + 阶段B派生视频提示词）==========
+function renderNineGridOutput() {
+  const res = buildNineGrid(state.formData);
+  const list = document.getElementById('sceneList');
+  list.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'ninegrid-output';
+  wrap.innerHTML =
+    '<div class="ng-block">' +
+      '<div class="ng-head">阶段 A · 九宫格出图提示词（无出图工具时输出文本，请用图像模型生成 3×3 故事板）</div>' +
+      '<div class="prompt-content">' + escapeHtml(res.stageA) + '</div>' +
+      '<button class="btn-copy" data-copy="ngA">复制九宫格出图提示词</button>' +
+    '</div>' +
+    '<div class="ng-block">' +
+      '<div class="ng-head">阶段 B · 派生 H3 视频提示词（据实际九宫格生成）</div>' +
+      '<div class="prompt-content">' + escapeHtml(res.stageB) + '</div>' +
+      '<button class="btn-copy" data-copy="ngB">复制视频提示词</button>' +
+    '</div>';
+  list.appendChild(wrap);
+  wrap.querySelectorAll('.btn-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const text = btn.dataset.copy === 'ngA' ? res.stageA : res.stageB;
+      copyToClipboard(text, btn);
+    });
+  });
+  document.getElementById('sceneCount').textContent = '九宫格模式 · 生成 3×3 出图提示词 + 派生视频提示词';
+}
+
 // ========== 渲染项目摘要 ==========
 function renderProjectSummary() {
   const f = state.formData;
@@ -756,6 +846,8 @@ function renderProjectSummary() {
     <div class="summary-item"><span class="label">行业</span><span class="value">${ind?.name || '-'}</span></div>
     <div class="divider"></div>
     <div class="summary-item"><span class="label">风格</span><span class="value">${st?.name || '-'}</span></div>
+    <div class="divider"></div>
+    <div class="summary-item"><span class="label">流程</span><span class="value">${{ auto: '通用', wen: '文戏', action: '武戏', grid: '九宫格' }[f.flow || 'auto'] || '通用'}</span></div>
     <div class="divider"></div>
     <div class="summary-item"><span class="label">画幅</span><span class="value ratio-px" data-pixels="${((ASPECT_RATIOS[f.aspectRatio] || {}).pixels || '').replace(/、/g, ' · ')}">${f.aspectRatio}</span></div>
     ${f.slogan ? `<div class="divider"></div><div class="summary-item"><span class="label">Slogan</span><span class="value">${f.slogan}</span></div>` : ''}
@@ -1333,6 +1425,24 @@ function loadHistoryRecord(id) {
     const refSec = document.getElementById('refImagesSection');
     if (refSec) refSec.style.display = state.genMode === 'i2v' ? 'block' : 'none';
     renderRefImageRows();
+    // 恢复叙事流程与专属字段
+    state.flow = rec.formData.flow || 'auto';
+    state.relationFrom = rec.formData.relationFrom || '';
+    state.relationTo = rec.formData.relationTo || '';
+    state.coreProp = rec.formData.coreProp || '';
+    state.dialogueLang = rec.formData.dialogueLang || '中文';
+    state.opponent = rec.formData.opponent || '';
+    state.equipBound = rec.formData.equipBound || '';
+    state.story = rec.formData.story || '';
+    state.gridCells = Array.isArray(rec.formData.gridCells) ? rec.formData.gridCells.slice() : [];
+    applyFlowUI(state.flow);
+    const rf = document.getElementById('relationFrom'); if (rf) rf.value = state.relationFrom;
+    const rt = document.getElementById('relationTo'); if (rt) rt.value = state.relationTo;
+    const cp = document.getElementById('coreProp'); if (cp) cp.value = state.coreProp;
+    const dl = document.getElementById('dialogueLang'); if (dl) dl.value = state.dialogueLang;
+    const op = document.getElementById('opponent'); if (op) op.value = state.opponent;
+    const eb = document.getElementById('equipBound'); if (eb) eb.value = state.equipBound;
+    const st = document.getElementById('story'); if (st) st.value = state.story;
     // 重新渲染网格高亮
     renderVideoTypes();
     renderIndustries();

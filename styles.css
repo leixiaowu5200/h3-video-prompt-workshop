@@ -2493,3 +2493,64 @@ body::before {
   white-space: nowrap;
 }
 
+/* ===================== 流程专属面板 / 九宫格 ===================== */
+.flow-panel input,
+.flow-panel select,
+.flow-panel textarea { margin-bottom: 8px; }
+
+.grid-cells {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.grid-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg-subtle, rgba(255,255,255,0.03));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.grid-cell .gc-label {
+  font-size: 11px;
+  color: var(--accent-bright, #d4a44c);
+  font-weight: 600;
+}
+.grid-cell input {
+  margin: 0;
+  font-size: 12px;
+}
+
+.ninegrid-output {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ng-block {
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-card, #14141b);
+}
+.ng-head {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-bright, #d4a44c);
+  background: var(--accent-glow, rgba(212,164,76,0.08));
+  border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.08));
+}
+.ng-block .prompt-content {
+  padding: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-primary, #e8e8ee);
+}
+.ng-block .btn-copy {
+  margin: 0 14px 14px;
+}
+
