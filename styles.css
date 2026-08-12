@@ -2443,16 +2443,20 @@ body::before {
 }
 .flow-preset-btn {
   flex: 1 1 auto;
-  min-width: 84px;
+  min-width: 96px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 10px;
   background: var(--bg-input);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--pc, var(--border));
   border-radius: 8px;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.18s ease;
-  text-align: center;
+  text-align: left;
 }
 .flow-preset-btn:hover {
   border-color: var(--border-hover);
@@ -2460,10 +2464,30 @@ body::before {
   background: var(--bg-card-hover);
 }
 .flow-preset-btn.active {
-  border-color: var(--accent);
-  color: var(--accent-bright);
-  background: var(--accent-glow);
+  border-color: var(--pc, var(--accent));
+  border-left-color: var(--pc, var(--accent));
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--pc, var(--accent)) 14%, transparent);
   font-weight: 600;
+}
+.fp-icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.fp-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fp-name {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.fp-tag {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 .flow-steps {
   display: flex;
@@ -2503,6 +2527,25 @@ body::before {
   accent-color: var(--accent);
   cursor: pointer;
   flex-shrink: 0;
+}
+.fs-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.fs-text {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.fs-blurb {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: auto;
+  padding-left: 8px;
+  text-align: right;
+  flex: 1;
+  min-width: 0;
 }
 .flow-step-label .fs-name {
   color: var(--text-primary);

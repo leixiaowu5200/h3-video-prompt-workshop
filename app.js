@@ -21,7 +21,7 @@ const state = {
   fullRefZh: '',
   fullRefEn: '',
   lang: 'zh', // 'zh' | 'en'  默认中文（中国用户）；H3 提示词正文仍可切英文输出
-  productFlow: { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() }
+  productFlow: { preset: 'daily_journey', steps: PRODUCT_FLOW_PRESETS.daily_journey.steps.slice() }
 };
 
 // ========== 初始化 ==========
@@ -153,10 +153,15 @@ function renderFlowSection() {
   const tip = document.getElementById('flowTip');
   if (!presetWrap || !stepsWrap) return;
 
-  // 预设按钮
+  // 预设按钮（带图标 + 主题色 + 短标签，让"每一项"明显不同）
   presetWrap.innerHTML = Object.entries(PRODUCT_FLOW_PRESETS).map(function (entry) {
     const id = entry[0], p = entry[1];
-    return `<button type="button" class="flow-preset-btn ${state.productFlow.preset === id ? 'active' : ''}" data-preset="${id}" title="${p.desc}">${p.name}</button>`;
+    const m = FLOW_PRESET_META[id] || { icon: '🎬', color: '#888', tag: '' };
+    const active = state.productFlow.preset === id ? 'active' : '';
+    return `<button type="button" class="flow-preset-btn ${active}" data-preset="${id}" title="${p.desc}" style="--pc:${m.color}">
+      <span class="fp-icon">${m.icon}</span>
+      <span class="fp-text"><span class="fp-name">${p.name}</span><span class="fp-tag">${m.tag}</span></span>
+    </button>`;
   }).join('');
 
   // 步骤列表：已选在前（按当前顺序），未选在后
@@ -164,6 +169,7 @@ function renderFlowSection() {
   stepsWrap.innerHTML = PRODUCT_FLOW_STEP_ORDER.map(function (id) {
     const step = PRODUCT_FLOW_STEPS[id];
     if (!step) return '';
+    const sm = FLOW_STEP_META[id] || { icon: '•', blurb: '' };
     const idx = steps.indexOf(id);
     const selected = idx !== -1;
     const isFirst = idx <= 0;
@@ -171,8 +177,9 @@ function renderFlowSection() {
     return `<div class="flow-step-row ${selected ? 'selected' : ''}">
       <label class="flow-step-label">
         <input type="checkbox" data-step="${id}" ${selected ? 'checked' : ''}>
-        <span class="fs-name">${step.name}</span>
-        <span class="fs-name-en">${step.nameEn}</span>
+        <span class="fs-icon">${sm.icon}</span>
+        <span class="fs-text"><span class="fs-name">${step.name}</span><span class="fs-name-en">${step.nameEn}</span></span>
+        <span class="fs-blurb">${sm.blurb}</span>
       </label>
       <div class="flow-step-actions">
         <button type="button" class="fs-btn" data-up="${id}" ${!selected || isFirst ? 'disabled' : ''} title="上移">↑</button>
@@ -182,8 +189,12 @@ function renderFlowSection() {
   }).join('');
 
   if (tip) {
-    const names = steps.map(function (id) { return (PRODUCT_FLOW_STEPS[id] || {}).name || id; });
-    tip.textContent = names.length ? ('当前流程：' + names.join(' → ')) : '请至少勾选一个环节';
+    const names = steps.map(function (id) {
+      const m = FLOW_STEP_META[id] || {};
+      const n = (PRODUCT_FLOW_STEPS[id] || {}).name || id;
+      return (m.icon ? (m.icon + ' ') : '') + n;
+    });
+    tip.textContent = names.length ? ('当前流程（一步步衔接）：' + names.join(' → ')) : '请至少勾选一个环节';
   }
 
   // 绑定预设按钮
@@ -235,7 +246,7 @@ function onVideoTypeChange() {
   if (flowSec) flowSec.style.display = isProduct ? 'block' : 'none';
   if (shotGroup) shotGroup.style.display = isProduct ? 'none' : 'block';
   if (isProduct && (!state.productFlow || !state.productFlow.steps.length)) {
-    state.productFlow = { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() };
+    state.productFlow = { preset: 'daily_journey', steps: PRODUCT_FLOW_PRESETS.daily_journey.steps.slice() };
   }
   if (isProduct) renderFlowSection();
 }

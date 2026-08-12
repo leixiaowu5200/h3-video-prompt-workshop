@@ -1133,6 +1133,15 @@ function generateScenePrompt(ctx, scene) {
     musicZh = zhTpl.music(ctx);
     if (ctx.narrativeFlavorZh) visualZh += ' ' + ctx.narrativeFlavorZh;
     if (ctx.industryNarrativeZh) visualZh += ' ' + ctx.industryNarrativeZh;
+  } else if (result.visualZh) {
+    // 步骤自带中文（生活叙事流等连贯步骤）：直接使用，并注入风格/行业叙事DNA与品牌清理
+    visualZh = result.visualZh;
+    if (!ctx.hasBrand) visualZh = stripInactiveBrandVisual(visualZh);
+    visualZhBase = visualZh;
+    soundscapeZh = result.soundscapeZh || result.soundscape;
+    musicZh = result.musicZh || result.music;
+    if (ctx.narrativeFlavorZh) visualZh += ' ' + ctx.narrativeFlavorZh;
+    if (ctx.industryNarrativeZh) visualZh += ' ' + ctx.industryNarrativeZh;
   } else {
     // 兜底：没有中文模板时使用英文
     visualZh = visualEn;
@@ -1172,7 +1181,10 @@ function generateScenePrompt(ctx, scene) {
     aspectRatio: ctx.aspectRatio,
     colorGrading: ctx.colorGrading,
     colorGradingZh: ctx.colorGradingZh,
-    lightingDescZh: ctx.lightingDescZh
+    lightingDescZh: ctx.lightingDescZh,
+    // 镜头衔接：本镜结尾（供下一镜开头使用）
+    continuityTailZh: result.tailZh || '',
+    continuityTailEn: result.tailEn || ''
   };
 
   return sceneData;
@@ -1248,10 +1260,24 @@ function buildContext(formData) {
     eventDate: formData.eventDate || '',
     eventLocation: formData.eventLocation || '',
 
+    // 主角人设：让多镜头共享"同一个人"，串成真实生活流（生活叙事流核心）
+    personaZh: (PERSONA_MAP[formData.industry] || PERSONA_MAP._default).zh,
+    personaEn: (PERSONA_MAP[formData.industry] || PERSONA_MAP._default).en,
+
     // 相机运动（从场景模板中获取，这里提供默认值）
     cameraMovement: ''
   };
 }
+
+// 主角人设：按行业给一个真实、可共鸣的"同一个人"，避免镜头各说各话
+const PERSONA_MAP = {
+  hydro: { zh: '一位长期伏案、肩颈常常紧绷的职场人', en: 'a desk-bound professional whose neck and shoulders stay tense' },
+  health: { zh: '一位开始重视日常养护的都市人', en: 'an urbanite who has started valuing everyday self-care' },
+  tech: { zh: '一位被各种设备包围、渴望效率的都市人', en: 'a city dweller surrounded by gadgets, chasing efficiency' },
+  lighting: { zh: '一位在意居家光环境的屋主', en: 'a homeowner who cares about home lighting' },
+  ticket: { zh: '一位怕麻烦、只想省心的人', en: 'someone who dislikes hassle and wants peace of mind' },
+  _default: { zh: '一位注重生活品质的普通人', en: 'an ordinary person who values quality of life' }
+};
 
 /**
  * 剧情反转风格专用分镜模板
@@ -1555,6 +1581,116 @@ PRODUCT_FLOW_STEPS.brand_story = {
   }
 };
 
+// ========== 生活叙事流：同一个人的一天，镜头一步步衔接 ==========
+// 设计目标：解决"各 15 秒镜头彼此独立、天马行空、一个不挨一个"的问题。
+// 每条提示词共享同一个主角人设（ctx.personaZh/En），并通过 tail（上一镜结尾）→ prevTail（下一镜开头）串成真实生活流。
+PRODUCT_FLOW_STEPS.day_setup = {
+  id: 'day_setup', name: '职场铺垫', nameEn: 'Daily Grind', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera follows with a slow, empathetic push-in',
+  lighting: 'soft, natural light with a slightly cool, weary tone',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '生活叙事流·第一镜：铺垫同一个人的疲惫现状，不卖货、只共鸣。建立"身体需要被照顾"的情绪，为后续回家做 SPA 埋下钩子。',
+  generate(ctx) {
+    const personaEn = ctx.personaEn, personaZh = ctx.personaZh;
+    const voEn = ctx.voiceoverText || 'We take care of everything — yet so often forget the body that carries us through it all.';
+    const voZh = ctx.voiceoverText || '我们总在照顾一切，却常常忘了照顾承载这一切的身体。';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, a medium shot follows ${personaEn} through a packed workday — long hours at the desk, tense neck and shoulders, a body quietly overdrawn. ${ctx.cameraMovement}. Soft, slightly cool light hints at quiet fatigue. They pause, lift a hand to the back of the neck, a small moment of realizing the body needs care too. ${ctx.colorGrading}.`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，中景镜头跟拍${personaZh}——长时间伏案、肩颈紧绷、身体悄悄透支的一整天。镜头以缓慢、共情的推进，光线柔和却略带清冷，透出隐约的疲惫。此人停顿，抬手扶向后颈，一个"身体也需要被照顾"的微小醒觉。${ctx.colorGradingZh}。`,
+      soundscape: `The muffled rush of a busy day — distant typing, a soft sigh, the faint hum of city life — settling into a calmer, more intimate room tone.`,
+      soundscapeZh: `忙碌一天的闷响底噪——远处键盘声、一声轻叹、城市微鸣，逐渐沉淀为更安静、私密的空间感。`,
+      music: `A gentle, reflective piano melody at a slow tempo, sparse and warm, with a single sustained string note that opens space for thought.`,
+      musicZh: `缓慢、内省的钢琴旋律，稀疏温暖，一记持续的弦音留出思考空间。`,
+      tailEn: 'As quitting time nears, they tidy the desk and head home, shedding the commute fatigue.',
+      tailZh: '下班回到家中，Ta卸下通勤的疲惫'
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.home_return = {
+  id: 'home_return', name: '回家过渡', nameEn: 'Heading Home', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera tracks gently from the doorway to the living room',
+  lighting: 'warm, inviting home lighting',
+  textOverlay: false,
+  voiceover: false,
+  directorNote: '生活叙事流·过渡镜：承接上一镜"下班回家"，从外界回到私人空间，节奏放慢，为居家 SPA 做铺垫。',
+  generate(ctx) {
+    const prevZh = ctx.prevTailZh ? (ctx.prevTailZh + '，') : '';
+    const prevEn = ctx.prevTailEn ? (ctx.prevTailEn + ' ') : '';
+    const personaZh = ctx.personaZh, personaEn = ctx.personaEn;
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, ${prevEn}${personaEn} returns home, slips off the commute shoes and jacket, leaving the crowded outside world for a quiet personal space; the pace slows noticeably. ${ctx.cameraMovement}. Warm home light wraps in. ${ctx.colorGrading}.`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，${prevZh}${personaZh}下班回到家中，换下通勤的鞋与外套，从拥挤的外界回到属于自己的安静空间，节奏明显慢了下来。镜头以缓慢速度从玄关跟拍到客厅，暖色调的居家光线包裹进来。${ctx.colorGradingZh}。`,
+      soundscape: `The click of the door, shoes set down, a kettle beginning to hum — the outside noise fading into a calm home bed.`,
+      soundscapeZh: `关门声、放鞋声、水壶开始轻声作响——外界的嘈杂淡出，化作安静的居家底噪。`,
+      music: `A warm, mellow acoustic piece at a moderate tempo, soft pads and a gentle, reassuring rhythm.`,
+      musicZh: `中等速度、温暖柔和的木吉他曲，柔软铺底与温和安心的节奏。`,
+      tailEn: 'They move to the living room, ready to care for the body tense all day.',
+      tailZh: 'Ta来到客厅，准备好好照顾一下紧绷了一整天的身体'
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.home_spa = {
+  id: 'home_spa', name: '居家SPA', nameEn: 'Home Spa Ritual', duration: 5,
+  shotType: 'close-up shot',
+  cameraMovement: 'The camera performs a slow 360-degree arc around the subject and product',
+  lighting: 'warm, inviting studio lighting',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '生活叙事流·核心镜：同一个人在家真实使用产品做水疗 SPA，放松舒缓。合规：只讲调理舒缓，绝不作功效承诺（行业叙事自动注入）。',
+  generate(ctx) {
+    const prevZh = ctx.prevTailZh ? (ctx.prevTailZh + '，') : '';
+    const prevEn = ctx.prevTailEn ? (ctx.prevTailEn + ' ') : '';
+    const personaZh = ctx.personaZh, personaEn = ctx.personaEn;
+    const subject = ctx.product || ctx.industryData.productContext || ctx.brand || 'the product';
+    const subjectZh = ctx.product || ctx.industryData.productContext || ctx.brand || '这款产品';
+    const voEn = ctx.voiceoverText || 'A few quiet minutes at home — letting the body relax, unwind, and feel cared for.';
+    const voZh = ctx.voiceoverText || '在家里的几分钟，让身体放松下来，被好好照顾。';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, ${prevEn}${personaEn} uses ${subject} for a home spa session in their own living room or bedroom — a real, everyday use, relaxed and soothing. ${ctx.cameraMovement}. Warm light wraps the scene; the day's tension visibly softens. ${ctx.colorGrading}.`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，${prevZh}${personaZh}在自家客厅或卧室里，用${subjectZh}做一次居家水疗 SPA——真实的使用过程，放松而舒缓。镜头以缓慢速度做 360 度环绕，暖意包裹画面，肩颈的紧绷悄然软化。${ctx.colorGradingZh}。`,
+      soundscape: `The soft trickle of water and a faint, soothing hum under a calm home ambience.`,
+      soundscapeZh: `水流的轻柔潺潺与安稳、舒缓的居家底噪下的细微嗡鸣。`,
+      music: `A warm, mellow acoustic piece at a moderate tempo, with soft pads and a gentle, reassuring rhythm.`,
+      musicZh: `中等速度、温暖柔和的木吉他曲，柔软铺底与温和安心的节奏。`,
+      tailEn: 'When the ritual ends, the tense neck and shoulders have quietly loosened.',
+      tailZh: '一套流程做完，紧绷的肩颈悄悄松开了'
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.benefit_show = {
+  id: 'benefit_show', name: '好处展示', nameEn: 'What It Helps With', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera holds a steady, reassuring frame then slowly pulls back',
+  lighting: 'bright, warm, inviting light',
+  textOverlay: true,
+  voiceover: true,
+  directorNote: '生活叙事流·收尾镜：回到产品本身，讲清它带来的日常体验与好处（帮助放松肩颈、忙碌后得到舒缓、把养生变随手可做的小仪式）。不硬广、贴合实际。',
+  generate(ctx) {
+    const prevZh = ctx.prevTailZh ? (ctx.prevTailZh + '，') : '';
+    const prevEn = ctx.prevTailEn ? (ctx.prevTailEn + ' ') : '';
+    const subject = ctx.product || ctx.industryData.productContext || ctx.brand || 'the product';
+    const subjectZh = ctx.product || ctx.industryData.productContext || ctx.brand || '这款产品';
+    const voEn = ctx.voiceoverText || 'Small daily rituals add up — a few quiet minutes that help the body relax, unwind, and feel cared for.';
+    const voZh = ctx.voiceoverText || '日常的小仪式会累积——几分钟的安静，帮身体放松、舒缓，也让自己被照顾到。';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, ${prevEn}the frame returns to ${subject} itself, showing the everyday experience and benefits it brings — helping tense shoulders relax, offering relief after a busy day, turning home wellness into a small ritual within easy reach. ${ctx.cameraMovement}. Bright, warm light; the product's form and texture clearly visible. ${ctx.colorGrading}. Clean text overlays read: "Relax", then "Everyday Ease".`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，${prevZh}镜头回到${subjectZh}本身，讲清它带来的日常体验与好处——帮紧绷的肩颈放松、让忙碌一天后得到舒缓、把居家养生变成随手可做的小仪式。镜头匀速拉回，明亮温暖的光，产品外观与质感清晰可辨。${ctx.colorGradingZh}。画面以清爽无衬线字体淡入文字："放松"，随后"日常轻松"。`,
+      soundscape: `Soft ambient room tone, a slow even breath, the faint trickle of water.`,
+      soundscapeZh: `安静的房间底噪、缓慢均匀的呼吸、水流的细微潺潺。`,
+      music: `A very soft, minimal ambient pad at a slow tempo, breathing with the scene.`,
+      musicZh: `极轻柔、极简的环境铺底，缓慢呼吸般与画面同频。`,
+      tailEn: '',
+      tailZh: ''
+    };
+  }
+};
+
 // 预设流程：选一个快速套用，之后再自由增删 / 排序
 const PRODUCT_FLOW_PRESETS = {
   standard: {
@@ -1576,14 +1712,46 @@ const PRODUCT_FLOW_PRESETS = {
     name: '极简种草流',
     desc: '产品亮相 → 设备好处 → 使用场景（三镜说完）',
     steps: ['reveal', 'benefits', 'lifestyle']
+  },
+  daily_journey: {
+    name: '生活叙事流',
+    desc: '职场疲惫铺垫 → 居家用产品做 SPA → 展示设备好处（同一个人的一天，镜头一步步衔接）',
+    steps: ['day_setup', 'home_spa', 'benefit_show']
   }
 };
 
 // 流程步骤在面板中的展示顺序（含全部可选项）
 const PRODUCT_FLOW_STEP_ORDER = [
   'problem', 'reveal', 'features', 'lifestyle', 'cta',
-  'health_awareness', 'benefits', 'audience', 'reaction', 'brand_story'
+  'health_awareness', 'benefits', 'audience', 'reaction', 'brand_story',
+  'day_setup', 'home_return', 'home_spa', 'benefit_show'
 ];
+
+// 流程预设的视觉元数据（图标 + 主题色 + 短标签），让"每一项"在面板上明显不同
+const FLOW_PRESET_META = {
+  standard: { icon: '📈', color: '#4f9cff', tag: '带货转化' },
+  educate: { icon: '🌱', color: '#43c59e', tag: '科普种草' },
+  trust: { icon: '🛡️', color: '#b98cff', tag: '品牌信任' },
+  minimal: { icon: '✨', color: '#ffb454', tag: '极简' },
+  daily_journey: { icon: '🎬', color: '#ff6b9d', tag: '故事线' }
+};
+// 流程步骤的视觉元数据（图标 + 一句话说明），让每个环节一眼可辨
+const FLOW_STEP_META = {
+  problem: { icon: '😣', blurb: '抛出现实痛点，引发共鸣' },
+  reveal: { icon: '🎯', blurb: '产品英雄镜头揭晓' },
+  features: { icon: '⚙️', blurb: '展示功能与工艺细节' },
+  lifestyle: { icon: '🏠', blurb: '真实生活场景融入' },
+  cta: { icon: '🛒', blurb: '引导下单 / 了解' },
+  health_awareness: { icon: '💡', blurb: '先共鸣：身体需要被照顾' },
+  benefits: { icon: '💆', blurb: '讲清体验与好处' },
+  audience: { icon: '👥', blurb: '适合的人群' },
+  reaction: { icon: '🌿', blurb: '调理期好转反应科普' },
+  brand_story: { icon: '🏛️', blurb: '品牌初心与理念' },
+  day_setup: { icon: '💼', blurb: '职场疲惫铺垫（不卖货）' },
+  home_return: { icon: '🚪', blurb: '下班回家·过渡衔接' },
+  home_spa: { icon: '🛁', blurb: '居家用产品做 SPA' },
+  benefit_show: { icon: '✅', blurb: '展示设备能帮什么' }
+};
 
 function generateStoryboard(formData) {
   const ctx = buildContext(formData);
@@ -1619,13 +1787,20 @@ function generateStoryboard(formData) {
 
   // 按 shotCount 取镜头模板（环绕），每段统一为 shotDur 秒
   const scenes = [];
+  // 镜头衔接：上一镜的结尾（tail）作为下一镜的开头（prevTail），串成连续故事
+  let prevTailZh = '';
+  let prevTailEn = '';
   for (let i = 0; i < shotCount; i++) {
     const scene = templates[i % templates.length];
     const sceneCtx = {
       ...ctx,
       cameraMovement: scene.cameraMovement,
       lightingDesc: scene.lighting || ctx.lightingDesc,
-      dialogueLine: ctx.dialogueLines[i] || ''
+      dialogueLine: ctx.dialogueLines[i] || '',
+      prevTailZh: prevTailZh,
+      prevTailEn: prevTailEn,
+      sceneIndex: i,
+      totalScenes: shotCount
     };
     const data = generateScenePrompt(sceneCtx, scene);
     data.duration = shotDur; // 每段固定时长（H3 单次生成上限 15 秒）
@@ -1639,9 +1814,14 @@ function generateStoryboard(formData) {
     data.dialogueLang = formData.dialogueLang || '中文';
     data.opponent = formData.opponent || '';
     data.equipBound = formData.equipBound || '';
+    data.continuityTailZh = data.continuityTailZh || '';
+    data.continuityTailEn = data.continuityTailEn || '';
     // 图生视频：按镜头自动设计本镜头所需参考图（用户无需预先选择，生成后按清单上传）
     // ⚠️ 参考图清单是给用户的操作指南，永远用中文（不受 state.lang 提示词输出语言影响）
     data.refPlan = designateShotReferences(data, i, ctx, true, hasGlobalFixed);
+    // 把本镜结尾传给下一镜，形成衔接
+    prevTailZh = data.continuityTailZh;
+    prevTailEn = data.continuityTailEn;
     scenes.push(data);
   }
   return scenes;
