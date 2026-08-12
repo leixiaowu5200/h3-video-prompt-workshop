@@ -2195,7 +2195,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const enSubject = detectSubject(scene, 'en');
   const enBeats = genBeats(scene, 'en', segs, enSubject);
   const enGlobal = '=== Global Style & Consistency ===\n' +
-    'Resolution: 1080p+ (2K), 16:9 aspect ratio.\n' +
+    'Resolution: 1080p+ (2K), ' + (scene.aspectRatio || '16:9') + ' aspect ratio.\n' +
     lockClauseEn(enSubject) + '\n' +
     'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen.\n\n';
 
@@ -2454,7 +2454,7 @@ function buildShotBriefZh(scene, index, startSec, refImages, nextScene) {
 
   // 图生视频：有效参考图 = 全局固定图 + 本镜头设计图（每镜头独立编号，便于用户按镜头上传后拼接）
   const eff = getEffectiveRefs(refImages, scene.refPlan);
-  let header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
+  let header = '生成一段 ' + dur + ' 秒、' + (scene.aspectRatio || '16:9') + '、2K、原生立体声、MiniMax H3 的视频。\n';
   if (eff.all.length) {
     eff.all.forEach(function (r, i) {
       const num = i + 1;
@@ -2489,14 +2489,20 @@ function buildNineGrid(formData) {
   const story = (typeof formData.story === 'string' ? formData.story : '').trim();
   const cells = Array.isArray(formData.gridCells) ? formData.gridCells : [];
 
+  const ratio = formData.aspectRatio || '16:9';
+  // 根据画幅比例自动匹配九宫格像素尺寸
+  const gridPixels = ({ '16:9':'2048×1152', '9:16':'1152×2048', '1:1':'2048×2048', '4:3':'2048×1536', '3:4':'1536×2048' }[ratio]) || '2048×1152';
+
   // 阶段A：3×3 故事板出图提示词（无图像工具时输出文本，不谎称已经生成）
-  const stageA = '【九宫格出图提示词】生成一张整体 16:9、2048×1152 的 3×3 故事板：九个等大宽银幕画格，使用细而整洁的中性分隔线。'
+  const stageA = '【九宫格出图提示词】生成一张整体 ' + ratio + '、' + gridPixels + ' 的 3×3 故事板：'
+    + (ratio === '9:16' ? '九个等大竖屏画格' : (ratio === '1:1' ? '九个等大方形画格' : '九个等大宽银幕画格'))
+    + '，使用细而整洁的中性分隔线。'
     + '稳定主体「' + subject + '」的身份、服装、装备、材质与关键配色贯穿九格；镜位、景别、姿态与动作必须明显变化，九格不重复同一种构图。'
     + (story ? ('故事线：' + story + '。') : '')
     + '九格从左到右、从上到下依次承担：①建立 ②触发 ③升级 ④第一次变化 ⑤中段主体状态 ⑥第二次升级 ⑦高潮形成 ⑧接近完成 ⑨最终画面。';
 
   // 阶段B：依据九格描述派生 H3 视频提示词
-  let stageB = '【九宫格派生 H3 视频提示词】生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
+  let stageB = '【九宫格派生 H3 视频提示词】生成一段 ' + dur + ' 秒、' + ratio + '、2K、原生立体声、MiniMax H3 的视频。\n';
   const refImages = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages) && formData.referenceImages.length)
     ? formData.referenceImages : [];
   if (refImages.length) {
