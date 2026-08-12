@@ -1647,40 +1647,66 @@ function generateStoryboard(formData) {
 // ========== 图生视频：按镜头自动设计参考图（用户无需预先选择，生成后按清单上传）==========
 // 设计原则：每个镜头独立在 H3 生成后再拼接；主体图建议全程复用同一张以保证一致；
 // 场景图随镜头变化；风格图仅在首镜定调（后续可复用同图）。若用户提供了「全局固定图」，则主体由固定图承担，本函数只补充场景图。
+// ⚠️ 描述必须用**操作指南式大白话**——用户看到后立刻知道该上传什么类型的图片。
+// 禁止出现英文术语、禁止粘贴镜头画面原文、禁止抽象描述。
+
+// ===== 图1：主体/产品参考图 —— 告诉用户该拍/找一张什么产品照片 =====
 function buildSubjectRefDesc(ctx, scene, isZh) {
   const p = (ctx.product || '').trim();
   const b = (ctx.brand || '').trim();
   const ind = (ctx.industryName || '').trim();
-  const core = p || b || ind || (isZh ? '主体' : 'the main subject');
+  const core = p || b || ind || '你的产品或主体';
   if (isZh) {
-    return core + '（实拍或高清渲染，正面 45° 视角，纯色/渐变背景，材质与轮廓清晰，无文字水印）';
+    return '📷 请上传一张「' + core + '」的产品实拍图（正面或 45° 角，纯色/浅色背景最佳，不要带场景、不要带人物、不要带文字水印）。如果产品是设备/仪器，拍整体外观即可；如果是服务/课程，拍品牌 LOGO 或代表性道具。';
   }
-  return core + ' (real photo or clean render, 45-degree front view, solid or gradient background, clear material and silhouette, no watermark)';
+  return '📷 Upload a clear product photo of "' + core + '" — front or 45° angle, plain/light background only. No scenery, no people, no text overlay.';
 }
+
+// ===== 辅助：从镜头画面描述中提炼具体场景类型 =====
+function extractSceneTypeZh(visualText) {
+  const txt = visualText.toLowerCase();
+  if (/伏案|办公|键盘|工位|电脑前|写字楼|加班|忙碌.*一天|上班族/.test(txt)) return '🏢 办公室/工位环境图（桌椅、电脑可见，自然光或室内灯光）';
+  if (/居家|客厅|卧室|家中|家里|沙发|床|厨房|阳台|家庭|温馨|日常体验|居家养生/.test(txt)) return '🏠 居家客厅/卧室环境图（生活化布置，柔和光线）';
+  if (/户外|阳光|公园|街道|城市|自然光|室外|蓝天|绿植/.test(txt)) return '🌳 户外自然环境图（白天自然光，公园/街道/庭院一角）';
+  if (/水疗|养生|调理|理疗|按摩|汗蒸|SPA|浴场|康养/.test(txt)) return '💆 水疗/养生场馆环境图（理疗室或设备使用区域）';
+  if (/店铺|商场|橱窗|货架|购物|展示|卖场|门店/.test(txt)) return '🏪 店铺/展厅环境图（产品陈列区，明亮整洁）';
+  if (/医院|诊所|诊室|医生|护士|检查|治疗|康复/.test(txt)) return '🏥 医疗/康复环境图（专业洁净感）';
+  if (/健身房|运动|训练|跑步|器械|瑜伽/.test(txt)) return '🏋️ 健身房/运动空间环境图';
+  if (/教室|学校|培训|学习|讲课/.test(txt)) return '🎓 教室/培训空间环境图';
+  if (/餐厅|咖啡|用餐|美食|厨房/.test(txt)) return '🍽️ 餐厅/餐饮环境图';
+  if (/工厂|车间|生产线|制造/.test(txt)) return '🏭 工厂/生产环境图';
+  const fp = (visualText.match(/[^。，。\n]{8,40}/) || [''])[0];
+  if (fp) return '🖼️ 与本镜头匹配的环境图：「' + fp.slice(0,30) + '」——找氛围接近的实景照片';
+  return '🖼️ 本镜头所需的环境参考图（实景照片）';
+}
+
+// ===== 图2：场景/环境参考图 =====
 function buildSceneRefDesc(scene, ctx, isZh) {
-  // 优先用本镜头真实画面描述的首句，告诉用户这张场景图应拍什么（可操作性强）
-  let vis = (scene.visualZhBase || scene.visualZh || scene.visualEnBase || scene.visualEn || '');
-  vis = (' ' + vis).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
-  const firstSentence = vis.split(/[。.\n]/).map(function (s) { return s.trim(); }).filter(Boolean)[0] || '';
-  const light = isZh ? (ctx.lightingDescZh || ctx.lightingDesc || '自然光') : (ctx.lightingDesc || 'natural light');
   if (isZh) {
-    const base = firstSentence
-      ? ('即：「' + firstSentence.slice(0, 48) + (firstSentence.length > 48 ? '…' : '') + '」')
-      : ('与「' + (scene.name || '本镜头') + '」匹配的实景');
-    return '本镜头实景环境参考（' + light + '）：' + base + '，机位与背景布局明确，供 H3 参照生成该镜头场景';
+    let vis = (scene.visualZhBase || scene.visualZh || scene.visualEnBase || scene.visualEn || '');
+    vis = (' ' + vis).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+    return extractSceneTypeZh(vis);
   }
-  const baseEn = firstSentence
-    ? ('i.e. "' + firstSentence.slice(0, 90) + (firstSentence.length > 90 ? '…' : '') + '"')
-    : ('matching "' + (scene.name || 'this shot') + '"');
-  return 'A real-environment image for this shot (' + light + '): ' + baseEn + ', with clear camera angle and background layout for H3 to reference this shot’s scene';
+  let ve = (scene.visualEnBase || scene.visualEn || '').replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+  const t = ve.toLowerCase();
+  if (/office|desk|keyboard|workplace|busy day/.test(t)) return '🏢 Office/workspace environment';
+  if (/home|living room|bedroom|couch|domestic|house/.test(t)) return '🏠 Home interior (living room or bedroom)';
+  if (/outdoor|park|street|sunlight|nature/.test(t)) return '🌳 Outdoor environment (daytime)';
+  if (/spa|wellness|therapy|massage/.test(t)) return '💆 Spa/wellness space';
+  if (/store|shop|retail|display/.test(t)) return '🏪 Store/showroom environment';
+  if (/hospital|clinic|medical/.test(t)) return '🏥 Medical/rehabilitation space';
+  if (/gym|fitness|workout|yoga/.test(t)) return '🏋️ Gym/fitness space';
+  const fpe = (ve.match(/[^.,;\n]{10,60}/) || [''])[0];
+  if (fpe) return '🖼️ Environment: "' + fpe.slice(0,50) + '"';
+  return '🖼️ Real-environment reference for this shot';
 }
+
+// ===== 图3：风格/光影参考图（仅首镜）=====
 function buildStyleRefDesc(ctx, isZh) {
-  const cg = isZh ? (ctx.colorGradingZh || ctx.colorGrading || '精致调色') : (ctx.colorGrading || 'refined color grading');
-  const light = isZh ? (ctx.lightingDescZh || ctx.lightingDesc || '动机光') : (ctx.lightingDesc || 'motivated lighting');
-  if (isZh) return '整体风格/光影定调参考：' + cg + '，' + light + '，电影质感、低饱和、浅景深';
-  return 'Overall style/lighting reference: ' + cg + ', ' + light + ', cinematic, low-saturation, shallow depth of field';
+  const cg = isZh ? (ctx.colorGradingZh || ctx.colorGrading || '精致调色') : (ctx.colorGrading || '');
+  if (isZh) return '🎨 风格参考图（可选）：找一张色调接近「' + cg + '」的照片或电影截图。只看颜色氛围，内容无关。没有也行。';
+  return '🎨 Style reference (optional): any photo with "' + cg + '" color mood. Skip if unavailable.';
 }
-// 按镜头设计本镜头所需参考图。hasGlobalFixed=true 时，主体由全局固定图承担，本函数只补场景图。
 function designateShotReferences(scene, index, ctx, isZh, hasGlobalFixed) {
   const refs = [];
   if (!hasGlobalFixed) {
