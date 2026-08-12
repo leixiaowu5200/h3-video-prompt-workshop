@@ -536,6 +536,34 @@ function bindGenMode() {
     });
   });
 
+  // 参考图添加/删除/编辑事件
+  const addBtn = document.getElementById('addRefImageBtn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
+    renderRefImageRows();
+  });
+
+  const list = document.getElementById('refImageList');
+  if (list) {
+    list.addEventListener('input', (e) => {
+      const row = e.target.closest('.ref-row');
+      if (!row) return;
+      const idx = parseInt(row.dataset.idx, 10);
+      const field = e.target.dataset.field;
+      if (field === 'type') state.referenceImages[idx].type = e.target.value;
+      else if (field === 'desc') state.referenceImages[idx].desc = e.target.value;
+      else if (field === 'scope') state.referenceImages[idx].scope = (e.target.value === 'all') ? 'all' : parseInt(e.target.value, 10);
+    });
+    list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ref-del')) {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        state.referenceImages.splice(idx, 1);
+        renderRefImageRows();
+      }
+    });
+  }
+}
+
 function bindFlowSelector() {
   const grid = document.getElementById('flowGrid');
   if (!grid) return;
@@ -578,35 +606,6 @@ function renderGridCells() {
       state.gridCells[i] = inp.value;
     });
   });
-}
-
-  const addBtn = document.getElementById('addRefImageBtn');
-  if (addBtn) addBtn.addEventListener('click', () => {
-    state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
-    renderRefImageRows();
-  });
-
-  const list = document.getElementById('refImageList');
-  if (list) {
-    // 输入即时写入 state
-    list.addEventListener('input', (e) => {
-      const row = e.target.closest('.ref-row');
-      if (!row) return;
-      const idx = parseInt(row.dataset.idx, 10);
-      const field = e.target.dataset.field;
-      if (field === 'type') state.referenceImages[idx].type = e.target.value;
-      else if (field === 'desc') state.referenceImages[idx].desc = e.target.value;
-      else if (field === 'scope') state.referenceImages[idx].scope = (e.target.value === 'all') ? 'all' : parseInt(e.target.value, 10);
-    });
-    // 删除
-    list.addEventListener('click', (e) => {
-      if (e.target.classList.contains('ref-del')) {
-        const idx = parseInt(e.target.dataset.idx, 10);
-        state.referenceImages.splice(idx, 1);
-        renderRefImageRows();
-      }
-    });
-  }
 }
 
 function renderRefImageRows() {
