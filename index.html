@@ -107,7 +107,7 @@
 
       <!-- 生成模式：文生视频 / 图生视频 -->
       <div class="form-group">
-        <label>生成模式 <span class="hint">文生视频 或 图生视频（需提供参考图）</span></label>
+        <label>生成模式 <span class="hint">文生视频 或 图生视频（图生视频无需预先选参考图，生成后按镜头自动设计）</span></label>
         <div class="genmode-grid" id="genModeGrid">
           <div class="genmode-card active" data-mode="t2v">
             <div class="icon">📝</div>
@@ -117,7 +117,7 @@
           <div class="genmode-card" data-mode="i2v">
             <div class="icon">🖼️</div>
             <div class="name">图生视频</div>
-            <div class="desc">提供参考图（人物/产品/场景）</div>
+            <div class="desc">按镜头自动设计参考图（也可选填固定图）</div>
           </div>
         </div>
       </div>
@@ -125,7 +125,8 @@
       <!-- 参考图（仅图生视频显示） -->
       <div class="ref-images-section" id="refImagesSection" style="display:none;">
         <div class="ref-images-tip">
-          <div>图生视频需提供参考图。提示词会按「第1张 / 第2张 …」的顺序引用，<b>请务必在海螺 H3 里按相同顺序上传这些图</b>（第1张参考图 = 你在 H3 上传的第一张），这样场景才会严格参照你给的图片。建议：图1 人物、图2 产品/设备、图3 场景。每张可填「描述」帮助 H3 理解该图用途。</div>
+          <div><b>图生视频不再强制预选参考图。</b>生成后，每个镜头卡片会给出「📷 本镜头参考图清单」，明确告诉你该镜头要在海螺 H3 上传哪几张图（主体图 / 场景图 / 风格图），<b>按清单逐镜头上传并分别生成，再把各段拼接即可</b>。主体图建议全程用同一张，保证主体一致。</div>
+          <div>（可选）如果你有统一的品牌 / 产品主图想全程复用，可点击下方「+ 添加参考图」添加（scope 选「全部镜头」）；不添加则由系统按镜头自动设计主体图。每张可填「描述」帮助 H3 理解该图用途。</div>
           <div class="ref-images-warning">⚠️ <b>关键防错：</b>设备参考图必须是<b>纯产品白底/纯灰底图</b>，不要带场景/装饰/道具/花背景。海螺 H3 是「整图参考」机制——它会把图里所有元素都当成该图主体的特征，<b>如果你传一张设备+沙发+花+台灯的合成图，H3 会把这些装饰物当成设备的部件，给设备加上这些道具</b>。人物图也类似：单人物单背景、避免半身人脸混搭全身。场景图可以包含环境陈设。</div>
         </div>
         <div id="refImageList"></div>
@@ -272,7 +273,7 @@
               <button class="help-item-head"><span>📝 分镜直投提示词结构</span><span class="help-item-arrow">▾</span></button>
               <div class="help-item-body">
                 <p><strong>1. H3 开头规格声明</strong> — 时长、画幅、2K、立体声、模型名</p>
-                <p><strong>2. 参考图前缀（图生视频）</strong> — 每行一张 <code>@image#1 = 人物参考</code> / <code>@image#2 = 产品参考</code>，放绝对开头；编号 N 与你在海螺 H3 上传顺序严格一致</p>
+                <p><strong>2. 参考图前缀（图生视频）</strong> — 每行一张 <code>@image#1 = 主体参考</code> / <code>@image#2 = 场景参考</code>，放绝对开头；编号 N 与你在海螺 H3 上传顺序严格一致。<b>该前缀是「每镜头独立」的</b>：每个镜头卡片已按「本镜头参考图清单」给出该镜头要上传的图及顺序，逐镜头生成后拼接即可。</p>
                 <p><strong>3. 镜头描述</strong> — 主体、构图、运镜、光影、动作与台词</p>
                 <p><strong>4. 时间线细分</strong> — 切成若干段（如 0–3s、3–7s…），保证时长填满不空镜</p>
                 <p><strong>5. 衔接要求</strong> — 每段末尾自然衔接下一镜，末镜定格收尾</p>

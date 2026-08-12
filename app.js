@@ -531,10 +531,8 @@ function bindGenMode() {
       state.genMode = card.dataset.mode;
       const sec = document.getElementById('refImagesSection');
       if (sec) sec.style.display = state.genMode === 'i2v' ? 'block' : 'none';
-      if (state.genMode === 'i2v' && state.referenceImages.length === 0) {
-        state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
-        renderRefImageRows();
-      }
+      // 注意：图生视频不再强制预选参考图——生成后系统按每个镜头自动设计「本镜头参考图清单」，
+      // 用户按需上传即可；如需统一的品牌/产品主图全程复用，可在此可选添加（scope 全为「全部镜头」）。
     });
   });
 
@@ -790,7 +788,7 @@ function renderStoryboard() {
 
   // 分镜数量 / 总时长标题
   const modeLabel = (state.formData.genMode === 'i2v')
-    ? (' · 图生视频 ' + (state.formData.referenceImages ? state.formData.referenceImages.length : 0) + ' 张参考图')
+    ? ' · 图生视频（按镜头自动设计参考图）'
     : ' · 文生视频';
   document.getElementById('sceneCount').textContent = n + ' 个镜头 · 每段 ' + (scenes[0] ? scenes[0].duration : 15) + ' 秒 · 共 ' + total + ' 秒' + modeLabel + ' · 提示词约 ' + totalChars + ' 字';
 
@@ -870,6 +868,24 @@ function createSceneCard(scene, index, startSec) {
   const nextScene = (index < state.scenes.length - 1) ? state.scenes[index + 1] : null;
   const shotBlock = buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene);
 
+  // 图生视频：按镜头自动设计的参考图清单（全局固定图 + 本镜头设计图），供用户在 H3 按此上传
+  const eff = getEffectiveRefs(refImages, scene.refPlan);
+  const showRefPlan = (state.formData.genMode === 'i2v' && eff.all.length > 0);
+  const refPlanHtml = showRefPlan ? (
+    '<div class="ref-plan">' +
+      '<div class="rp-head">📷 本镜头参考图（图生视频 · 在 H3 按此顺序上传）</div>' +
+      '<ul class="rp-list">' +
+        eff.all.map(function (r, i) {
+          const num = i + 1;
+          const isFixed = i < eff.fixed.length;
+          let tag = isFixed ? '固定复用' : (r.role === 'subject' ? '主体·建议全程同图' : (r.role === 'style' ? '首镜定调' : '场景'));
+          return '<li><span class="rp-num">图' + num + '</span><span class="rp-tag' + (isFixed ? ' fixed' : '') + '">' + tag + '</span><span class="rp-desc">' + escapeHtml(r.desc || r.type || '参考图') + '</span></li>';
+        }).join('') +
+      '</ul>' +
+      '<div class="rp-note">每个镜头独立在 H3 生成后拼接成片；主体图建议全程用同一张，保证主体一致。</div>' +
+    '</div>'
+  ) : '';
+
   card.innerHTML = `
     <div class="scene-header">
       <div class="scene-number">${index + 1}</div>
@@ -896,6 +912,7 @@ function createSceneCard(scene, index, startSec) {
         <div class="tech-item"><div class="t-label">画面文字</div><div class="t-value">${scene.textOverlay ? '有' : '无'}</div></div>
       </div>
       ${scene.dialogueLine ? `<div class="dialogue-box"><span class="label">台词 / 配音</span><span class="dialogue-text">${escapeHtml(scene.dialogueLine)}</span></div>` : ''}
+      ${refPlanHtml}
       <div class="prompt-section">
         <div class="prompt-label">
           <span class="pname"><span class="dot" style="background:var(--accent)"></span>直投提示词 [Shot ${index + 1}] ${langTag}（可直接粘贴到海螺 H3）</span>

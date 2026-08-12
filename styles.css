@@ -1106,6 +1106,70 @@ body::before {
   word-break: break-word;
 }
 
+/* ========== 本镜头参考图清单（图生视频·按镜头自动设计） ========== */
+.ref-plan {
+  margin: 14px 0 4px;
+  padding: 12px 14px;
+  background: var(--accent-glow, rgba(212,175,55,.08));
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent, #d4af37);
+  border-radius: var(--radius-sm, 8px);
+}
+.ref-plan .rp-head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-bright, #e6c558);
+  margin-bottom: 8px;
+}
+.ref-plan .rp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ref-plan .rp-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.ref-plan .rp-num {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 30px;
+}
+.ref-plan .rp-tag {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1c2330;
+  background: var(--accent, #d4af37);
+  white-space: nowrap;
+}
+.ref-plan .rp-tag.fixed {
+  background: #5b8cff;
+  color: #fff;
+}
+.ref-plan .rp-desc {
+  color: var(--text-primary);
+  word-break: break-word;
+}
+.ref-plan .rp-note {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 .full-prompt {
   margin-top: 16px;
   padding-top: 16px;

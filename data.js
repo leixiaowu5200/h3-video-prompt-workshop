@@ -1585,6 +1585,10 @@ const PRODUCT_FLOW_STEP_ORDER = [
 
 function generateStoryboard(formData) {
   const ctx = buildContext(formData);
+  // 图生视频：按镜头自动设计参考图所需上下文
+  const isZh = (typeof state !== 'undefined' && state.lang === 'zh');
+  const globalFixed = (formData.referenceImages || []).filter(function (r) { return !r.scope || r.scope === 'all'; });
+  const hasGlobalFixed = globalFixed.length > 0;
   // 产品广告：若用户选择了「流程」，则按所选步骤组装（自由组合 / 排序）；剧情反转风格仍走专用模板
   const isProductFlow = (formData.videoType === 'product' && formData.style !== 'twist'
     && Array.isArray(formData.flowSteps) && formData.flowSteps.length > 0);
@@ -1633,9 +1637,69 @@ function generateStoryboard(formData) {
     data.dialogueLang = formData.dialogueLang || '中文';
     data.opponent = formData.opponent || '';
     data.equipBound = formData.equipBound || '';
+    // 图生视频：按镜头自动设计本镜头所需参考图（用户无需预先选择，生成后按清单上传）
+    data.refPlan = designateShotReferences(data, i, ctx, isZh, hasGlobalFixed);
     scenes.push(data);
   }
   return scenes;
+}
+
+// ========== 图生视频：按镜头自动设计参考图（用户无需预先选择，生成后按清单上传）==========
+// 设计原则：每个镜头独立在 H3 生成后再拼接；主体图建议全程复用同一张以保证一致；
+// 场景图随镜头变化；风格图仅在首镜定调（后续可复用同图）。若用户提供了「全局固定图」，则主体由固定图承担，本函数只补充场景图。
+function buildSubjectRefDesc(ctx, scene, isZh) {
+  const p = (ctx.product || '').trim();
+  const b = (ctx.brand || '').trim();
+  const ind = (ctx.industryName || '').trim();
+  const core = p || b || ind || (isZh ? '主体' : 'the main subject');
+  if (isZh) {
+    return core + '（实拍或高清渲染，正面 45° 视角，纯色/渐变背景，材质与轮廓清晰，无文字水印）';
+  }
+  return core + ' (real photo or clean render, 45-degree front view, solid or gradient background, clear material and silhouette, no watermark)';
+}
+function buildSceneRefDesc(scene, ctx, isZh) {
+  // 优先用本镜头真实画面描述的首句，告诉用户这张场景图应拍什么（可操作性强）
+  let vis = (scene.visualZhBase || scene.visualZh || scene.visualEnBase || scene.visualEn || '');
+  vis = (' ' + vis).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+  const firstSentence = vis.split(/[。.\n]/).map(function (s) { return s.trim(); }).filter(Boolean)[0] || '';
+  const light = isZh ? (ctx.lightingDescZh || ctx.lightingDesc || '自然光') : (ctx.lightingDesc || 'natural light');
+  if (isZh) {
+    const base = firstSentence
+      ? ('即：「' + firstSentence.slice(0, 48) + (firstSentence.length > 48 ? '…' : '') + '」')
+      : ('与「' + (scene.name || '本镜头') + '」匹配的实景');
+    return '本镜头实景环境参考（' + light + '）：' + base + '，机位与背景布局明确，供 H3 参照生成该镜头场景';
+  }
+  const baseEn = firstSentence
+    ? ('i.e. "' + firstSentence.slice(0, 90) + (firstSentence.length > 90 ? '…' : '') + '"')
+    : ('matching "' + (scene.name || 'this shot') + '"');
+  return 'A real-environment image for this shot (' + light + '): ' + baseEn + ', with clear camera angle and background layout for H3 to reference this shot’s scene';
+}
+function buildStyleRefDesc(ctx, isZh) {
+  const cg = isZh ? (ctx.colorGradingZh || ctx.colorGrading || '精致调色') : (ctx.colorGrading || 'refined color grading');
+  const light = isZh ? (ctx.lightingDescZh || ctx.lightingDesc || '动机光') : (ctx.lightingDesc || 'motivated lighting');
+  if (isZh) return '整体风格/光影定调参考：' + cg + '，' + light + '，电影质感、低饱和、浅景深';
+  return 'Overall style/lighting reference: ' + cg + ', ' + light + ', cinematic, low-saturation, shallow depth of field';
+}
+// 按镜头设计本镜头所需参考图。hasGlobalFixed=true 时，主体由全局固定图承担，本函数只补场景图。
+function designateShotReferences(scene, index, ctx, isZh, hasGlobalFixed) {
+  const refs = [];
+  if (!hasGlobalFixed) {
+    refs.push({ type: isZh ? '主体/产品' : 'product', role: 'subject', reuse: true,
+      desc: buildSubjectRefDesc(ctx, scene, isZh) });
+  }
+  refs.push({ type: isZh ? '场景/环境' : 'scene', role: 'scene', reuse: false,
+    desc: buildSceneRefDesc(scene, ctx, isZh) });
+  if (index === 0) {
+    refs.push({ type: isZh ? '风格/光影' : 'style', role: 'style', reuse: false,
+      desc: buildStyleRefDesc(ctx, isZh) });
+  }
+  return refs;
+}
+// 有效参考图：全局固定图（scope all/未设）在前，本镜头设计图在后；用于 @image#N 前缀编号
+function getEffectiveRefs(globalRefs, shotPlan) {
+  const fixed = (globalRefs || []).filter(function (r) { return r.scope === undefined || r.scope === null || r.scope === 'all'; });
+  const perShot = (shotPlan || []).map(function (p) { return { type: p.type, desc: p.desc, role: p.role, reuse: !!p.reuse }; });
+  return { fixed: fixed, perShot: perShot, all: fixed.concat(perShot) };
 }
 
 // ========== 时长与时间码工具 ==========
@@ -2061,7 +2125,9 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const dur = scene.duration || 5;
   const genMode = (typeof state !== 'undefined' && state.formData && state.formData.genMode) || 't2v';
   const isI2V = genMode === 'i2v';
-  const imgs = (isI2V && Array.isArray(refImages) && refImages.length) ? refImages : [];
+  // 图生视频：有效参考图 = 全局固定图 + 本镜头设计图（每镜头独立编号）
+  const eff = getEffectiveRefs(refImages, scene.refPlan);
+  const imgs = (isI2V && eff.all.length) ? eff.all : [];
 
   // I2VA：在绝对开头输出「@Image1 as 人物参考@Image2 as 产品参考@Image3 as 场景参考」前缀，
   // 明确告诉 H3 每一张参考图是什么，强锚定主体/产品/环境，避免生成结果与参考图无关
@@ -2144,7 +2210,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   } else {
     imdFull += ' The shot ends on a stable, readable frame that naturally closes the film.';
   }
-  if (refNote) imdFull += refNote;
+  if (refNote && !isI2V) imdFull += refNote;
 
   // ---- 三字段组装 ----
   const sound = scene.soundscapeEn || 'soft ambient sound continues throughout';
@@ -2359,11 +2425,13 @@ function buildShotBriefZh(scene, index, startSec, refImages, nextScene) {
   const flow = scene.flow || 'auto';
   const mk = (typeof scene.marketingStyle === 'string' && MARKETING_STYLES[scene.marketingStyle]) ? scene.marketingStyle : 'none';
 
+  // 图生视频：有效参考图 = 全局固定图 + 本镜头设计图（每镜头独立编号，便于用户按镜头上传后拼接）
+  const eff = getEffectiveRefs(refImages, scene.refPlan);
   let header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
-  if (refImages && refImages.length) {
-    refImages.forEach(function (r, i) {
+  if (eff.all.length) {
+    eff.all.forEach(function (r, i) {
       const num = i + 1;
-      const t = r.type || (i === 0 ? '人物' : i === 1 ? '产品/设备' : '场景');
+      const t = r.type || (i === 0 ? '主体' : '参考');
       header += '@image#' + num + ' = ' + (r.desc || t) + '\n';
     });
   }
@@ -2482,10 +2550,10 @@ function buildFullReference(scenes, formData, lang) {
   const n = scenes.length;
   const total = scenes.reduce((s, x) => s + x.duration, 0);
 
-  // 图生视频模式：读取参考图
-  const refImages = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages) && formData.referenceImages.length)
-    ? formData.referenceImages : [];
-  const isI2V = refImages.length > 0;
+  // 图生视频模式：读取参考图（仅全局固定图参与整片六段式；按镜头设计的参考图见各 [Shot N] 的「本镜头参考图」）
+  const globalRefs = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages)) ? formData.referenceImages : [];
+  const globalFixed = globalRefs.filter(function (r) { return r.scope === undefined || r.scope === null || r.scope === 'all'; });
+  const isI2V = formData.genMode === 'i2v';
 
   // 计算各镜头起始时间码
   const starts = [];
@@ -2505,19 +2573,25 @@ function buildFullReference(scenes, formData, lang) {
       (slogan ? (', with the on-screen tagline "' + slogan + '"') : '') +
       ' — whose appearance, wardrobe and on-screen text must remain fully consistent and unchanged across every shot.';
   }
-  if (isI2V && refImages.length >= 1) {
+  if (isI2V && globalFixed.length >= 1) {
     subjects += ' Facial identity, hairstyle, wardrobe and body proportions come from <Reference Image 1>.';
   }
   subjects += '\n';
   if (product) {
     let prodLine = '<Subject 2> is the core product/service: ' + product + '. Its geometry, material, label text, logo placement and structural details remain fully preserved across every angle.';
-    if (isI2V && refImages.length >= 2) {
+    if (isI2V && globalFixed.length >= 2) {
       prodLine += ' Geometric structure, logo and surface material come from <Reference Image 2>.';
     }
     subjects += prodLine + '\n';
   }
-  if (isI2V) {
-    refImages.forEach((r, k) => {
+  if (isI2V && globalFixed.length === 0) {
+    // 无全局固定图：主体图由用户按镜头准备并全程复用，场景图每镜头单独准备
+    const firstPlan = (scenes[0] && scenes[0].refPlan) || [];
+    const subj = firstPlan.find(function (p) { return p.role === 'subject'; });
+    subjects += 'This is an image-to-video film: prepare ONE subject reference image (e.g. ' + (subj ? subj.desc : 'the main subject') + ') and reuse it across all shots to keep the subject consistent; prepare one scene-environment image per shot (see each [Shot N]’s “本镜头参考图 / shot reference images”).\n';
+  }
+  if (isI2V && globalFixed.length > 0) {
+    globalFixed.forEach((r, k) => {
       const num = k + 1;
       const desc = r.desc || (isZh ? '用户提供的参考图' : 'user-provided reference image');
       if (isZh) {
@@ -2539,16 +2613,26 @@ function buildFullReference(scenes, formData, lang) {
   // ---- summary ----
   let summary;
   if (isI2V) {
-    const refDescZh = refImages.map((r, k) => '图' + (k + 1) + (r.type ? '（' + r.type + '）' : '')).join('、');
-    const refDescEn = refImages.map((r, k) => 'Image ' + (k + 1) + (r.type ? ' (' + refTypeEn(r.type) + ')' : '')).join(', ');
+    const refDescZh = globalFixed.map((r, k) => '图' + (k + 1) + (r.type ? '（' + r.type + '）' : '')).join('、');
+    const refDescEn = globalFixed.map((r, k) => 'Image ' + (k + 1) + (r.type ? ' (' + refTypeEn(r.type) + ')' : '')).join(', ');
     if (isZh) {
       const brandSegZh = hasBrand ? ('品牌 ' + brand + '，') : '';
-      summary = '[图生视频生成] 目标视频基于用户提供的 ' + refImages.length + ' 张参考图（' + refDescZh + '）生成，是一部 ' + vt.name + '（' + brandSegZh + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。以参考图为准保持主体外观一致，生成后于后期拼接成片。\n';
+      if (globalFixed.length > 0) {
+        summary = '[图生视频生成] 目标视频基于用户提供的 ' + globalFixed.length + ' 张固定参考图（' + refDescZh + '）生成，是一部 ' + vt.name + '（' + brandSegZh + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。以参考图为准保持主体外观一致，生成后于后期拼接成片。\n';
+      } else {
+        summary = '[图生视频生成] 目标视频按每个镜头自动设计的参考图生成（每镜头独立上传主体图+场景图，详见各 [Shot N] 的「本镜头参考图」），是一部 ' + vt.name + '（' + brandSegZh + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。主体图建议全程复用同一张以保证一致，生成后于后期拼接成片。\n';
+      }
     } else {
       const brandSegEn = hasBrand ? (' for ' + brand) : '';
-      summary = '[image-to-video generation] The target video is generated from ' + refImages.length + ' user-provided reference images (' + refDescEn + '), as a ' + vt.nameEn + brandSegEn + ' in ' + st.nameEn +
-        ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
-        '). Visual identity must match the reference images; generated as one connected storyboard and edited together in post-production.\n';
+      if (globalFixed.length > 0) {
+        summary = '[image-to-video generation] The target video is generated from ' + globalFixed.length + ' user-provided reference images (' + refDescEn + '), as a ' + vt.nameEn + brandSegEn + ' in ' + st.nameEn +
+          ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
+          '). Visual identity must match the reference images; generated as one connected storyboard and edited together in post-production.\n';
+      } else {
+        summary = '[image-to-video generation] The target video is generated from per-shot reference images (one subject image reused across all shots plus one scene image per shot — see each [Shot N]’s “shot reference images”), as a ' + vt.nameEn + brandSegEn + ' in ' + st.nameEn +
+          ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
+          '). Keep the subject identical by reusing the same subject image; edited together in post-production.\n';
+      }
     }
   } else {
     const brandSegRef = hasBrand ? (' for ' + brand) : '';
@@ -2563,14 +2647,24 @@ function buildFullReference(scenes, formData, lang) {
     retention += '<Subject 2> (appears in ' + shotRange + '): fully_preserved - product geometry, label and logo consistent.\n';
   }
   if (isI2V) {
-    refImages.forEach((r, k) => {
-      const num = k + 1;
+    if (globalFixed.length > 0) {
+      globalFixed.forEach((r, k) => {
+        const num = k + 1;
+        if (isZh) {
+          retention += '<参考图' + num + '> (appears in ' + shotRange + '): fully_preserved - 画面中的' + (r.type || '对应元素') + '外观、姿态与细节严格参照参考图' + num + '，保持完全一致。\n';
+        } else {
+          retention += '<Reference Image ' + num + '> (appears in ' + shotRange + '): fully_preserved - the ' + refTypeEn(r.type) + ' appearance, pose and details strictly match reference image ' + num + ' and stay fully consistent.\n';
+        }
+      });
+    } else {
       if (isZh) {
-        retention += '<参考图' + num + '> (appears in ' + shotRange + '): fully_preserved - 画面中的' + (r.type || '对应元素') + '外观、姿态与细节严格参照参考图' + num + '，保持完全一致。\n';
+        retention += '<主体参考图> (appears in ' + shotRange + '): fully_preserved - 主体图全程复用同一张，外观、姿态与细节保持完全一致。\n';
+        retention += '<场景参考图> (per shot): fully_preserved - 各镜头按「本镜头参考图」上传的场景图，画面环境与布局严格参照对应镜头。\n';
       } else {
-        retention += '<Reference Image ' + num + '> (appears in ' + shotRange + '): fully_preserved - the ' + refTypeEn(r.type) + ' appearance, pose and details strictly match reference image ' + num + ' and stay fully consistent.\n';
+        retention += '<Subject reference image> (appears in ' + shotRange + '): fully_preserved - the same subject image is reused across all shots; appearance, pose and details stay fully consistent.\n';
+        retention += '<Scene reference image> (per shot): fully_preserved - each shot uses its own scene image from that shot’s “shot reference images”; environment and layout strictly match the corresponding shot.\n';
       }
-    });
+    }
   }
 
   // ---- detailed_description ----
@@ -2578,12 +2672,20 @@ function buildFullReference(scenes, formData, lang) {
     ', ' + (scenes[0].lighting || 'motivated lighting') + ', and physically plausible camera movement.';
   let dd = styleLine + '\n';
   if (isI2V) {
-    const refsZh = refImages.map((r, k) => '[参考图' + (k + 1) + ']（' + (r.type || '参考') + '）').join('、');
-    const refsEn = refImages.map((r, k) => '[Reference Image ' + (k + 1) + '] (' + refTypeEn(r.type) + ')').join(', ');
-    if (isZh) {
-      dd += '全片严格参照以下参考图保持主体一致：' + refsZh + '。\n';
+    if (globalFixed.length > 0) {
+      const refsZh = globalFixed.map((r, k) => '[参考图' + (k + 1) + ']（' + (r.type || '参考') + '）').join('、');
+      const refsEn = globalFixed.map((r, k) => '[Reference Image ' + (k + 1) + '] (' + refTypeEn(r.type) + ')').join(', ');
+      if (isZh) {
+        dd += '全片严格参照以下固定参考图保持主体一致：' + refsZh + '。\n';
+      } else {
+        dd += 'Throughout the video, strictly use the following reference images to keep subjects consistent: ' + refsEn + '.\n';
+      }
     } else {
-      dd += 'Throughout the video, strictly use the following reference images to keep subjects consistent: ' + refsEn + '.\n';
+      if (isZh) {
+        dd += '图生视频·按镜头设计参考图：每镜头独立上传主体图（全程复用同一张）+ 场景图（详见各 [Shot N] 的「本镜头参考图」），严格参照以保证主体与场景一致。\n';
+      } else {
+        dd += 'Image-to-video, per-shot reference images: each shot uses its own subject image (reused across all shots) plus a scene image (see each [Shot N]’s “shot reference images”); strictly reference them to keep subject and scene consistent.\n';
+      }
     }
   }
   // 风格叙事DNA + 行业叙事DNA（整片只写一次，统一作用于全片，避免每个镜头重复）
@@ -2593,7 +2695,7 @@ function buildFullReference(scenes, formData, lang) {
     if (globalEn) dd += globalEn + '\n';
   }
   scenes.forEach((s, i) => {
-    const refNote = buildRefNoteForShot(refImages, i, isZh);
+    const refNote = buildRefNoteForShot(globalFixed, i, isZh);
     dd += buildShotBlock(s, i, starts[i], lang, refNote) + '\n';
   });
 
@@ -2606,8 +2708,8 @@ function buildFullReference(scenes, formData, lang) {
   scenes.forEach((s) => { music += (isZh ? s.musicZh : s.musicEn) + ' '; });
   music = music.trim() || 'N/A';
 
-  // I2VA：绝对开头用 @Image1 as 角色@Image2 as 产品@Image3 as 场景 绑定上传的参考图（H3 网页端图生视频靠此前缀定位每张图）
-  const i2vPrefix = isI2V ? (buildImageRefLine(refImages, false) + '\n') : '';
+  // I2VA：绝对开头用 @Image1 as 角色@Image2 as 产品@Image3 as 场景 绑定上传的参考图（仅全局固定图参与整片前缀；按镜头设计的图见各镜头「本镜头参考图」）
+  const i2vPrefix = (isI2V && globalFixed.length) ? (buildImageRefLine(globalFixed, false) + '\n') : '';
   return i2vPrefix + 'subject_definitions:\n' + subjects +
     '\nsummary:\n' + summary +
     '\nretention_analysis:\n' + retention +
