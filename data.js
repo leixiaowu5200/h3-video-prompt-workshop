@@ -1638,7 +1638,8 @@ function generateStoryboard(formData) {
     data.opponent = formData.opponent || '';
     data.equipBound = formData.equipBound || '';
     // 图生视频：按镜头自动设计本镜头所需参考图（用户无需预先选择，生成后按清单上传）
-    data.refPlan = designateShotReferences(data, i, ctx, isZh, hasGlobalFixed);
+    // ⚠️ 参考图清单是给用户的操作指南，永远用中文（不受 state.lang 提示词输出语言影响）
+    data.refPlan = designateShotReferences(data, i, ctx, true, hasGlobalFixed);
     scenes.push(data);
   }
   return scenes;
