@@ -1751,14 +1751,12 @@ function loadHistoryRecord(id) {
   // 同步左侧表单 UI
   if (rec.formData) {
     state.selectedVideoType = rec.formData.videoType || state.selectedVideoType;
-    document.getElementById('industry').value = rec.formData.industry || '';
-    document.getElementById('brandName').value = rec.formData.brandName || '';
-    document.getElementById('style').value = rec.formData.style || '';
+    const bnEl = document.getElementById('brandName'); if (bnEl) bnEl.value = rec.formData.brandName || '';
+    // style / ratio / duration 已改为 field-select 卡片控件，直接同步 state 后由下方 render* 统一重绘
+    state.selectedStyle = rec.formData.style || state.selectedStyle;
     state.marketingStyle = rec.formData.marketingStyle || 'none';
-    document.getElementById('ratio').value = rec.formData.ratio || '';
-    document.getElementById('duration').value = rec.formData.duration || '';
-    document.getElementById('coreMessage').value = rec.formData.coreMessage || '';
-    document.getElementById('targetAudience').value = rec.formData.targetAudience || '';
+    state.selectedRatio = rec.formData.aspectRatio || state.selectedRatio;
+    state.shotDur = rec.formData.shotDur || state.shotDur;
     // 恢复生成模式与参考图
     state.genMode = rec.formData.genMode || 't2v';
     state.referenceImages = Array.isArray(rec.formData.referenceImages) ? rec.formData.referenceImages.map(r => ({ ...r })) : [];
@@ -1787,9 +1785,12 @@ function loadHistoryRecord(id) {
     // 重新渲染网格高亮
     renderVideoTypes();
     renderIndustries();
+    // industry 必须在 renderIndustries 重建选项之后再赋值，否则选中项会被清空
+    const indEl = document.getElementById('industry'); if (indEl) indEl.value = rec.formData.industry || '';
     renderStyles();
     renderMarketingStyles();
     renderRatios();
+    renderDurations();
     const dlgEl = document.getElementById('dialogue');
     if (dlgEl) dlgEl.value = rec.formData.dialogue || '';
   }
