@@ -21,7 +21,18 @@ const state = {
   fullRefZh: '',
   fullRefEn: '',
   lang: 'en', // 'zh' | 'en'  默认英文 —— H3 主要识别英文，用户点「中文」切换查看
-  productFlow: { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() }
+  productFlow: { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() },
+  // ===== 爆款文案工坊状态 =====
+  currentTab: 'h3', // 'h3' | 'viral'
+  viralProduct: '',
+  viralRelation: '姐弟',
+  viralRelationCustom: '',
+  viralScene: '',
+  viralDuration: 15,
+  viralGenMode: 't2v',
+  viralRefImages: [],
+  viralResult: null,
+  viralH3Tab: 't2v'
 };
 
 // ========== 初始化 ==========
@@ -46,6 +57,10 @@ function init() {
   initTheme();
   // 初始化优化次数显示
   updateOptCountUI(getOptimizeCount());
+  // 爆款文案工坊：标签页 + 配置
+  bindAppTabs();
+  bindViralConfig();
+  restoreViralForm();
 }
 
 // ========== 通用点击展开选择器 ==========
@@ -652,6 +667,305 @@ function bindInfoCards() {
       }
     });
   });
+}
+
+// ========== 爆款文案工坊：标签页切换 ==========
+function bindAppTabs() {
+  const tabs = document.querySelectorAll('#appTabs .app-tab');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      state.currentTab = tab;
+      tabs.forEach(b => b.classList.toggle('active', b === btn));
+      const h3 = document.getElementById('view-h3');
+      const viral = document.getElementById('view-viral');
+      if (h3) h3.style.display = (tab === 'h3') ? 'grid' : 'none';
+      if (viral) viral.style.display = (tab === 'viral') ? 'grid' : 'none';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
+
+// ========== 爆款文案工坊：配置绑定 ==========
+const VIRAL_FORBIDDEN = ['治疗','治愈','医疗','根治','抗癌','治病','疗效','消炎','防癌','医治','病症','替代药物'];
+
+function bindViralConfig() {
+  // 人设关系卡片
+  const relGrid = document.getElementById('viralRelationGrid');
+  if (relGrid) {
+    relGrid.querySelectorAll('.genmode-card').forEach(card => {
+      card.addEventListener('click', () => {
+        relGrid.querySelectorAll('.genmode-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        const rel = card.dataset.rel;
+        state.viralRelation = rel;
+        const custom = document.getElementById('viralRelationCustom');
+        if (custom) custom.style.display = (rel === 'custom') ? 'block' : 'none';
+        saveViralForm();
+      });
+    });
+  }
+  const relCustom = document.getElementById('viralRelationCustom');
+  if (relCustom) relCustom.addEventListener('input', () => { state.viralRelationCustom = relCustom.value.trim(); saveViralForm(); });
+
+  // 时长卡片
+  const durGrid = document.getElementById('viralDurationGrid');
+  if (durGrid) {
+    durGrid.querySelectorAll('.genmode-card').forEach(card => {
+      card.addEventListener('click', () => {
+        durGrid.querySelectorAll('.genmode-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        state.viralDuration = parseInt(card.dataset.dur, 10);
+        saveViralForm();
+      });
+    });
+  }
+
+  // 生成模式卡片
+  const modeGrid = document.getElementById('viralGenModeGrid');
+  if (modeGrid) {
+    modeGrid.querySelectorAll('.genmode-card').forEach(card => {
+      card.addEventListener('click', () => {
+        modeGrid.querySelectorAll('.genmode-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        state.viralGenMode = card.dataset.mode;
+        const sec = document.getElementById('viralRefImagesSection');
+        if (sec) sec.style.display = (state.viralGenMode === 'i2v') ? 'block' : 'none';
+        if (state.viralGenMode === 'i2v' && state.viralRefImages.length === 0) {
+          state.viralRefImages.push({ type: '人物', desc: '' });
+          renderViralRefImageRows();
+        }
+        saveViralForm();
+      });
+    });
+  }
+
+  // 参考图增删
+  const addBtn = document.getElementById('viralAddRefBtn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    const defaults = ['人物', '产品/设备', '场景'];
+    state.viralRefImages.push({ type: defaults[state.viralRefImages.length] || '参考', desc: '' });
+    renderViralRefImageRows();
+    saveViralForm();
+  });
+  const list = document.getElementById('viralRefImageList');
+  if (list) {
+    list.addEventListener('input', (e) => {
+      const row = e.target.closest('.ref-row');
+      if (!row) return;
+      const idx = parseInt(row.dataset.idx, 10);
+      const field = e.target.dataset.field;
+      if (!state.viralRefImages[idx]) return;
+      if (field === 'type') state.viralRefImages[idx].type = e.target.value;
+      else if (field === 'desc') state.viralRefImages[idx].desc = e.target.value;
+      saveViralForm();
+    });
+    list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ref-del')) {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        state.viralRefImages.splice(idx, 1);
+        renderViralRefImageRows();
+        saveViralForm();
+      }
+    });
+  }
+
+  // 产品 / 场景
+  const prod = document.getElementById('viralProduct');
+  if (prod) prod.addEventListener('input', () => { state.viralProduct = prod.value.trim(); saveViralForm(); });
+  const scene = document.getElementById('viralScene');
+  if (scene) scene.addEventListener('input', () => { state.viralScene = scene.value.trim(); saveViralForm(); });
+
+  // 生成按钮
+  const genBtn = document.getElementById('viralGenerateBtn');
+  if (genBtn) genBtn.addEventListener('click', handleViralGenerate);
+
+  // 复制按钮
+  const copyCopy = document.getElementById('viralCopyCopyBtn');
+  if (copyCopy) copyCopy.addEventListener('click', () => {
+    if (state.viralResult) copyToClipboard(state.viralResult.copy, copyCopy);
+  });
+  const copyH3 = document.getElementById('viralCopyH3Btn');
+  if (copyH3) copyH3.addEventListener('click', () => {
+    if (state.viralResult) copyToClipboard(currentViralH3(), copyH3);
+  });
+  const copyAll = document.getElementById('viralCopyAllBtn');
+  if (copyAll) copyAll.addEventListener('click', () => {
+    if (state.viralResult) copyToClipboard(state.viralResult.copy + '\n\n==========\n\n' + currentViralH3(), copyAll);
+  });
+
+  // H3 文生/图生 子标签
+  const h3Tabs = document.getElementById('viralH3Tabs');
+  if (h3Tabs) {
+    h3Tabs.querySelectorAll('.viral-h3-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        h3Tabs.querySelectorAll('.viral-h3-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.viralH3Tab = btn.dataset.h3;
+        renderViralH3Text();
+      });
+    });
+  }
+}
+
+function currentViralH3() {
+  if (!state.viralResult) return '';
+  if (state.viralH3Tab === 'i2v' && (state.viralResult.genMode === 'i2v') && state.viralRefImages.length > 0) {
+    return state.viralResult.h3_i2v;
+  }
+  return state.viralResult.h3_t2v;
+}
+
+function renderViralRefImageRows() {
+  const list = document.getElementById('viralRefImageList');
+  if (!list) return;
+  list.innerHTML = state.viralRefImages.map((r, i) => {
+    return '<div class="ref-row" data-idx="' + i + '">' +
+      '<div class="ref-idx">图' + (i + 1) + '</div>' +
+      '<div class="ref-fields">' +
+        '<input class="ref-type" data-field="type" value="' + escapeHtml(r.type || '') + '" placeholder="类型，如：人物/产品/场景">' +
+        '<input class="ref-desc" data-field="desc" value="' + escapeHtml(r.desc || '') + '" placeholder="描述，如：弟弟，穿灰卫衣">' +
+      '</div>' +
+      '<button class="ref-del" data-idx="' + i + '" title="删除">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+function collectViralFormData() {
+  const rel = (state.viralRelation === 'custom')
+    ? (state.viralRelationCustom || '姐弟')
+    : state.viralRelation;
+  return {
+    product: state.viralProduct,
+    relation: rel,
+    scene: state.viralScene,
+    duration: state.viralDuration,
+    genMode: state.viralGenMode,
+    refImages: state.viralRefImages.map(r => ({ type: r.type, desc: r.desc }))
+  };
+}
+
+function handleViralGenerate() {
+  const fd = collectViralFormData();
+  const btn = document.getElementById('viralGenerateBtn');
+  btn.classList.add('loading');
+  btn.querySelector('span').textContent = '生成中...';
+  setTimeout(() => {
+    try {
+      const result = generateViralCopy(fd);
+      state.viralResult = result;
+      state.viralH3Tab = 't2v';
+      renderViralOutput(result);
+      saveViralForm();
+      showToast('🔥 爆款文案 + H3 提示词已生成');
+    } catch (e) {
+      console.error('[Viral] 生成失败:', e);
+      showToast('生成失败：' + (e.message || '未知错误'), 'warn');
+    } finally {
+      btn.classList.remove('loading');
+      btn.querySelector('span').textContent = '生成爆款文案 + H3 提示词';
+    }
+  }, 400);
+}
+
+function renderViralOutput(result) {
+  document.getElementById('viralEmptyState').style.display = 'none';
+  document.getElementById('viralContent').style.display = 'block';
+
+  const relLabel = (state.viralRelation === 'custom') ? (state.viralRelationCustom || '自定义') : state.viralRelation;
+  const summary = document.getElementById('viralSummary');
+  summary.innerHTML =
+    '<div class="summary-item"><span class="label">产品</span><span class="value">' + escapeHtml(result.product) + '</span></div>' +
+    '<div class="divider"></div>' +
+    '<div class="summary-item"><span class="label">关系</span><span class="value">' + escapeHtml(relLabel) + '</span></div>' +
+    '<div class="divider"></div>' +
+    '<div class="summary-item"><span class="label">场景</span><span class="value">' + (result.scene ? escapeHtml(result.scene) : '未填') + '</span></div>' +
+    '<div class="divider"></div>' +
+    '<div class="summary-item"><span class="label">时长</span><span class="value">' + result.copy.split('\n').length + ' 段文案 · ' + state.viralDuration + '秒</span></div>' +
+    '<div class="divider"></div>' +
+    '<div class="summary-item"><span class="label">模式</span><span class="value">' + (result.genMode === 'i2v' ? '图生视频' : '文生视频') + '</span></div>';
+
+  document.getElementById('viralCopyText').textContent = result.copy;
+
+  const countEl = document.getElementById('viralCount');
+  if (countEl) countEl.textContent = '文案 ' + result.copy.split('\n').length + ' 行 · H3 提示词 ' + (result.genMode === 'i2v' ? '文生+图生两版' : '1 版');
+
+  // H3 子标签：仅图生且有参考图时显示
+  const h3Tabs = document.getElementById('viralH3Tabs');
+  const showTabs = (result.genMode === 'i2v') && state.viralRefImages.length > 0;
+  if (h3Tabs) h3Tabs.style.display = showTabs ? 'flex' : 'none';
+  if (showTabs) {
+    h3Tabs.querySelectorAll('.viral-h3-tab').forEach(b => b.classList.toggle('active', b.dataset.h3 === state.viralH3Tab));
+  } else {
+    state.viralH3Tab = 't2v';
+  }
+  renderViralH3Text();
+
+  // 合规自检
+  const badge = document.getElementById('viralCompliance');
+  const hit = VIRAL_FORBIDDEN.filter(w => (result.copy + result.h3_t2v + result.h3_i2v).includes(w));
+  if (hit.length) {
+    badge.className = 'compliance-badge bad';
+    badge.textContent = '⚠️ 命中违禁词：' + hit.join('、') + '（请检查输入）';
+  } else {
+    badge.className = 'compliance-badge';
+    badge.textContent = '✅ 合规自检通过：文案未命中任何违禁医疗词';
+  }
+}
+
+function renderViralH3Text() {
+  const el = document.getElementById('viralH3Text');
+  if (el) el.textContent = currentViralH3();
+}
+
+// ========== 爆款文案工坊：配置本地持久化 ==========
+const VIRAL_FORM_KEY = 'h3_viral_form';
+function saveViralForm() {
+  try {
+    localStorage.setItem(VIRAL_FORM_KEY, JSON.stringify({
+      product: state.viralProduct,
+      relation: state.viralRelation,
+      relationCustom: state.viralRelationCustom,
+      scene: state.viralScene,
+      duration: state.viralDuration,
+      genMode: state.viralGenMode,
+      refImages: state.viralRefImages
+    }));
+  } catch (e) {}
+}
+function restoreViralForm() {
+  try {
+    const raw = localStorage.getItem(VIRAL_FORM_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    state.viralProduct = d.product || '';
+    state.viralRelation = d.relation || '姐弟';
+    state.viralRelationCustom = d.relationCustom || '';
+    state.viralScene = d.scene || '';
+    state.viralDuration = d.duration || 15;
+    state.viralGenMode = d.genMode || 't2v';
+    state.viralRefImages = Array.isArray(d.refImages) ? d.refImages.map(r => ({ ...r })) : [];
+
+    const prod = document.getElementById('viralProduct'); if (prod) prod.value = state.viralProduct;
+    const scene = document.getElementById('viralScene'); if (scene) scene.value = state.viralScene;
+    const custom = document.getElementById('viralRelationCustom'); if (custom) custom.value = state.viralRelationCustom;
+
+    // 关系卡片高亮
+    const relGrid = document.getElementById('viralRelationGrid');
+    if (relGrid) relGrid.querySelectorAll('.genmode-card').forEach(c => c.classList.toggle('active', c.dataset.rel === state.viralRelation));
+    if (custom) custom.style.display = (state.viralRelation === 'custom') ? 'block' : 'none';
+
+    // 时长卡片高亮
+    const durGrid = document.getElementById('viralDurationGrid');
+    if (durGrid) durGrid.querySelectorAll('.genmode-card').forEach(c => c.classList.toggle('active', parseInt(c.dataset.dur, 10) === state.viralDuration));
+
+    // 模式卡片高亮 + 参考图区
+    const modeGrid = document.getElementById('viralGenModeGrid');
+    if (modeGrid) modeGrid.querySelectorAll('.genmode-card').forEach(c => c.classList.toggle('active', c.dataset.mode === state.viralGenMode));
+    const sec = document.getElementById('viralRefImagesSection');
+    if (sec) sec.style.display = (state.viralGenMode === 'i2v') ? 'block' : 'none';
+    renderViralRefImageRows();
+  } catch (e) {}
 }
 
 // ========== 收集表单数据 ==========

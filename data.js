@@ -2433,6 +2433,142 @@ function buildNineGrid(formData) {
 }
 
 // 参考图类型 → 英文（用于英文提示词）
+// ========== 爆款文案工坊：生成「抖音口播文案 + 海螺 H3 视频提示词」两部分 ==========
+function resolveRelation(relation) {
+  var r = (relation || '姐弟').trim();
+  var map = {
+    '姐弟': { selfCall: '弟弟', partnerCall: '姐姐', relationLabel: '姐弟', audience: '兄弟姐妹们', selfSex: '男', partnerSex: '女' },
+    '姐妹': { selfCall: '我', partnerCall: '我姐', relationLabel: '姐妹', audience: '姐妹们', selfSex: '女', partnerSex: '女' },
+    '兄弟': { selfCall: '我', partnerCall: '我哥', relationLabel: '兄弟', audience: '兄弟们', selfSex: '男', partnerSex: '男' },
+    '夫妻': { selfCall: '我', partnerCall: '我老婆', relationLabel: '夫妻', audience: '大家', selfSex: '男', partnerSex: '女' },
+    '单人': { selfCall: '我', partnerCall: '', relationLabel: '单人', audience: '大家', selfSex: '', partnerSex: '' }
+  };
+  if (map[r]) return map[r];
+  return { selfCall: '我', partnerCall: relation, relationLabel: relation, audience: '大家', selfSex: '', partnerSex: '' };
+}
+
+function buildViralCopyText(R, scene) {
+  var single = (R.relationLabel === '单人' || !R.partnerCall);
+  var me = single ? '我' : R.selfCall;
+  var p = R.partnerCall;
+  var sceneLine = (scene && scene.trim())
+    ? (p ? p + '：「' + scene.trim() + '，这才是最实在的。」'
+         : '我：「' + scene.trim() + '，这才是最实在的。」')
+    : '';
+  var lines = [];
+  if (single) {
+    lines.push(
+      '【0–3s 钩子】',
+      '我（对镜头）：「别人还在纠结买什么，我倒好——」',
+      '我：「把客厅折腾成了水疗馆。」',
+      '',
+      '【3–12s 展示】',
+      '我：「每天下班回来这么泡一泡，整个人都松下来了。」'
+    );
+    if (sceneLine) lines.push(sceneLine);
+    lines.push(
+      '我：「说不上多神奇，就是居家日子舒服点。」',
+      '',
+      '【12–22s 人设】',
+      '我：「我做这个，不为别的——」',
+      '我：「就是自己用着顺手，才敢推荐给你们。」',
+      '',
+      '【22–25s CTA】',
+      '我：「想要的朋友们，评论区扣个『1』，我把清单整理好发你。」',
+      '我：「点个关注，看我怎么折腾。」'
+    );
+  } else {
+    lines.push(
+      '【0–3s 钩子】',
+      p + '（对镜头）：「别人家' + R.relationLabel + '出去旅游，我俩倒好——」',
+      me + '（入画）：「把客厅折腾成了水疗馆。」',
+      '',
+      '【3–12s 展示】',
+      me + '：「每天下班回来这么泡一泡，整个人都松下来了。」'
+    );
+    if (sceneLine) lines.push(sceneLine);
+    lines.push(
+      p + '：「说不上多神奇，就是居家日子舒服点。」',
+      '',
+      '【12–22s 人设】',
+      me + '：「我和' + p + '合伙做这个，不为别的——」',
+      p + '：「就是自己用着顺手，才敢推荐给你们。」',
+      '',
+      '【22–25s CTA】',
+      me + '：「想要的' + R.audience + '，评论区扣个『1』，我把清单整理好发你。」',
+      p + '：「点个关注，看我俩怎么折腾。」'
+    );
+  }
+  return lines.filter(Boolean).join('\n');
+}
+
+function fmtViralTime(sec) {
+  var m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return (m < 10 ? '0' + m : '' + m) + ':' + (s < 10 ? '0' + s : '' + s);
+}
+
+function buildViralH3Zh(fd, R, product) {
+  var dur = fd.duration || 15;
+  var genMode = fd.genMode === 'i2v' ? 'i2v' : 't2v';
+  var refImages = Array.isArray(fd.refImages) ? fd.refImages : [];
+  var isI2V = genMode === 'i2v' && refImages.length > 0;
+  var single = (R.relationLabel === '单人' || !R.partnerCall);
+  var scene = (fd.scene && fd.scene.trim && fd.scene.trim()) ? fd.scene.trim() : '';
+
+  var header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
+  if (isI2V) {
+    refImages.forEach(function (r, i) {
+      var num = i + 1;
+      var t = r.type || (i === 0 ? '人物' : i === 1 ? '产品/设备' : '场景');
+      header += '@image#' + num + ' = ' + (r.desc || t) + '\n';
+    });
+  }
+
+  var people = single
+    ? '主角（' + (R.selfSex || '出镜者') + '），服装发型全程一致'
+    : (R.selfCall + '（' + (R.selfSex || '出镜者') + '）＋' + R.partnerCall + '（' + (R.partnerSex || '出镜者') + '），服装发型全程一致');
+  var subjectLabel = single ? '主角' : (R.selfCall + '与' + R.partnerCall + '（' + R.relationLabel + '）');
+
+  var concept = '【影片目标与核心概念】展示' + subjectLabel + '把居家客厅变成水疗放松空间的真实日常，传递松弛舒适的生活质感，不做任何功效宣称。' + (scene ? ('核心场景：' + scene + '。') : '');
+  var lock = '【人物与一致性锁定】' + people + '；' + product + '（白色亚克力缸体、侧边简约触控面板）造型材质全程一致。';
+  var rules = '【摄影与表演规则】手持自然跟拍，允许硬切；微表情前后连续，不夸张表演；' + (single ? '主角' : '两人') + '互动自然松弛。';
+  var visual = '【视觉风格与材质】写实暖光，居家客厅环境，材质细腻真实，色调温馨统一。';
+  var sound = '【声音设计】环境：细密气泡水声＋极低设备白噪音＋居家底噪；人声：' + (single ? '主角' : '两人') + '自然口播（台词见第一部分文案），口型严格同步；无强配乐。';
+  var tail = '【收束】定格' + (single ? '主角' : '两人') + '比「1」手势，' + product + '静置，画面自然收束。';
+
+  var segDefs = [
+    single ? '中景：主角对镜头说话，立于明亮客厅。' : '中景：' + R.partnerCall + '对镜头说话，' + R.selfCall + '从画面外自然入画，两人立于明亮客厅。',
+    single ? '近景：主角坐于' + product + '旁，缸内气泡绵密升腾，神情放松。' : '近景：' + R.selfCall + '坐于' + product + '旁，缸内气泡绵密升腾，神情放松。',
+    '双人中景：' + (single ? '主角' : '两人') + '对视笑，自然互动，氛围松弛。',
+    '产品特写：' + product + '外观与触控操作简洁展示，材质细腻。',
+    (single ? '主角' : '两人') + '比「1」手势指向镜头外（评论区），构图均衡定格。'
+  ];
+  var pts = [];
+  for (var i = 0; i <= 5; i++) pts.push(Math.round(dur * i / 5 * 10) / 10);
+  var timeline = '【0–' + dur + '秒时间线（无缺口）】\n';
+  for (var j = 0; j < 5; j++) {
+    timeline += fmtViralTime(pts[j]) + '–' + fmtViralTime(pts[j + 1]) + ' ' + segDefs[j] + '\n';
+  }
+
+  return [header, concept, lock, timeline, rules, visual, sound, tail].join('\n\n') + '\n';
+}
+
+function generateViralCopy(fd) {
+  var product = ((fd.product || '').trim()) || '巨晴摩雅水疗设备';
+  var relation = (fd.relation || '姐弟').trim();
+  var dur = [5, 10, 15, 30].indexOf(Number(fd.duration)) >= 0 ? Number(fd.duration) : 15;
+  var genMode = fd.genMode === 'i2v' ? 'i2v' : 't2v';
+  var refImages = Array.isArray(fd.refImages) ? fd.refImages : [];
+  var scene = ((fd.scene || '').trim()) || '';
+  var R = resolveRelation(relation);
+
+  var copy = buildViralCopyText(R, scene);
+  var h3_t2v = buildViralH3Zh({ duration: dur, genMode: 't2v', refImages: [], scene: scene }, R, product);
+  var h3_i2v = buildViralH3Zh({ duration: dur, genMode: 'i2v', refImages: refImages, scene: scene }, R, product);
+
+  return { copy: copy, h3_t2v: h3_t2v, h3_i2v: h3_i2v, relation: relation, product: product, scene: scene, genMode: genMode };
+}
+
 function refTypeEn(type) {
   const t = (type || '').trim();
   const map = {

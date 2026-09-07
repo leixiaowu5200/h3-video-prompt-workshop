@@ -40,7 +40,12 @@
   </header>
 
   <div class="app-shell">
-  <main>
+  <nav class="app-tabs" id="appTabs">
+    <button class="app-tab active" data-tab="h3" type="button">🎬 H3 视频提示词</button>
+    <button class="app-tab" data-tab="viral" type="button">🔥 爆款文案工坊</button>
+  </nav>
+
+  <main id="view-h3" class="view-main">
     <!-- 左侧配置面板 -->
     <aside class="config-panel">
       <div class="panel-title">项目配置</div>
@@ -368,6 +373,131 @@
 
         <!-- 场景列表 -->
         <div id="sceneList"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== 爆款文案工坊视图 ===== -->
+  <main id="view-viral" class="view-main" style="display:none;">
+    <!-- 左侧配置面板 -->
+    <aside class="config-panel viral-config">
+      <div class="panel-title">爆款文案配置</div>
+
+      <!-- 产品/品牌 -->
+      <div class="form-group">
+        <label>产品 / 品牌名称 <span class="hint">默认巨晴摩雅水疗设备</span></label>
+        <input type="text" id="viralProduct" placeholder="例如：巨晴摩雅水疗设备">
+      </div>
+
+      <!-- 人设关系 -->
+      <div class="form-group">
+        <label>人设关系 <span class="hint">决定出镜角色与性别（你=弟弟/男）</span></label>
+        <div class="genmode-grid" id="viralRelationGrid">
+          <div class="genmode-card active" data-rel="姐弟"><div class="icon">👫</div><div class="name">姐弟</div><div class="desc">弟+姐（你男/姐女）</div></div>
+          <div class="genmode-card" data-rel="姐妹"><div class="icon">👭</div><div class="name">姐妹</div><div class="desc">两人女性</div></div>
+          <div class="genmode-card" data-rel="兄弟"><div class="icon">👬</div><div class="name">兄弟</div><div class="desc">两人男性</div></div>
+          <div class="genmode-card" data-rel="夫妻"><div class="icon">💑</div><div class="name">夫妻</div><div class="desc">丈夫+妻子</div></div>
+          <div class="genmode-card" data-rel="单人"><div class="icon">🧍</div><div class="name">单人</div><div class="desc">单人出镜</div></div>
+          <div class="genmode-card" data-rel="custom"><div class="icon">✍️</div><div class="name">自定义</div><div class="desc">自己填关系</div></div>
+        </div>
+        <input type="text" id="viralRelationCustom" placeholder="自定义关系，如：兄妹 / 母子 / 闺蜜" style="display:none;margin-top:8px;">
+      </div>
+
+      <!-- 核心场景 -->
+      <div class="form-group">
+        <label>核心场景 / 卖点 <span class="hint">选填，写进视频提示词与口播</span></label>
+        <input type="text" id="viralScene" placeholder="例如：下班回家泡澡解乏">
+      </div>
+
+      <!-- 视频时长 -->
+      <div class="form-group">
+        <label>视频时长</label>
+        <div class="genmode-grid" id="viralDurationGrid">
+          <div class="genmode-card" data-dur="5"><div class="name">5 秒</div></div>
+          <div class="genmode-card" data-dur="10"><div class="name">10 秒</div></div>
+          <div class="genmode-card active" data-dur="15"><div class="name">15 秒</div></div>
+          <div class="genmode-card" data-dur="30"><div class="name">30 秒</div></div>
+        </div>
+      </div>
+
+      <!-- 生成模式 -->
+      <div class="form-group">
+        <label>生成模式 <span class="hint">文生视频 / 图生视频（需参考图）</span></label>
+        <div class="genmode-grid" id="viralGenModeGrid">
+          <div class="genmode-card active" data-mode="t2v"><div class="icon">📝</div><div class="name">文生视频</div><div class="desc">仅用文字描述</div></div>
+          <div class="genmode-card" data-mode="i2v"><div class="icon">🖼️</div><div class="name">图生视频</div><div class="desc">提供参考图</div></div>
+        </div>
+      </div>
+
+      <!-- 参考图（图生视频） -->
+      <div class="ref-images-section" id="viralRefImagesSection" style="display:none;">
+        <div class="ref-images-tip">
+          图生视频需在海螺 H3 按相同顺序上传参考图（图1 人物、图2 产品/设备、图3 场景）。设备图务必纯白底/纯灰底，不要带装饰。
+        </div>
+        <div id="viralRefImageList"></div>
+        <button type="button" class="btn-add-ref" id="viralAddRefBtn">+ 添加参考图</button>
+      </div>
+
+      <!-- 合规铁律 -->
+      <div class="form-group">
+        <label>合规铁律 <span class="hint">本工具内置，无需操作</span></label>
+        <div class="compliance-note">零医疗功效宣称：禁用 治疗/治愈/医疗/根治/抗癌/治病/疗效 等词，仅描述体验与情绪。</div>
+      </div>
+
+      <!-- 生成按钮 -->
+      <button class="btn-generate" id="viralGenerateBtn">
+        <span>生成爆款文案 + H3 提示词</span>
+      </button>
+    </aside>
+
+    <!-- 右侧输出 -->
+    <section class="viral-section" id="viralSection">
+      <!-- 空状态 -->
+      <div class="empty-state" id="viralEmptyState">
+        <div class="icon">🔥</div>
+        <h2>爆款文案工坊</h2>
+        <p>左侧填好产品、人设关系、时长与生成模式，点生成即可得到「抖音口播文案 + 海螺 H3 视频提示词」两部分，直接拿去拍、拿去生成。</p>
+        <div class="features">
+          <div class="feature"><div class="f-icon">📢</div><div class="f-title">抖音口播文案</div><div class="f-desc">钩子+展示+人设+CTA</div></div>
+          <div class="feature"><div class="f-icon">🎬</div><div class="f-title">海螺 H3 提示词</div><div class="f-desc">文生/图生七段式</div></div>
+          <div class="feature"><div class="f-icon">🛡️</div><div class="f-title">合规内置</div><div class="f-desc">自动避违禁词</div></div>
+        </div>
+      </div>
+
+      <!-- 输出内容 -->
+      <div id="viralContent" style="display:none;">
+        <div class="project-summary" id="viralSummary"></div>
+
+        <div class="storyboard-header">
+          <h2>生成结果 <span class="count" id="viralCount"></span></h2>
+          <div class="export-buttons">
+            <button class="btn-export" id="viralCopyAllBtn">📋 复制全部</button>
+          </div>
+        </div>
+
+        <!-- 第一部分：口播文案 -->
+        <div class="viral-block">
+          <div class="viral-block-head">
+            <span class="vb-title">第一部分 · 抖音口播文案</span>
+            <button class="btn-copy" id="viralCopyCopyBtn">复制口播文案</button>
+          </div>
+          <div class="prompt-content" id="viralCopyText"></div>
+        </div>
+
+        <!-- 第二部分：H3 提示词 -->
+        <div class="viral-block">
+          <div class="viral-block-head">
+            <span class="vb-title">第二部分 · 海螺 H3 视频提示词</span>
+            <div class="viral-h3-tabs" id="viralH3Tabs" style="display:none;">
+              <button class="viral-h3-tab active" data-h3="t2v" type="button">文生 T2VA</button>
+              <button class="viral-h3-tab" data-h3="i2v" type="button">图生 I2VA</button>
+            </div>
+            <button class="btn-copy" id="viralCopyH3Btn">复制 H3 提示词</button>
+          </div>
+          <div class="prompt-content" id="viralH3Text"></div>
+        </div>
+
+        <div class="compliance-badge" id="viralCompliance">✅ 合规自检：文案未命中任何违禁医疗词</div>
       </div>
     </section>
   </main>
