@@ -20,8 +20,8 @@ const state = {
   formData: {},
   fullRefZh: '',
   fullRefEn: '',
-  lang: 'en', // 'zh' | 'en'  默认英文 —— H3 主要识别英文，用户点「中文」切换查看
-  productFlow: { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() },
+  lang: 'zh', // 'zh' | 'en'  默认中文（中国用户）；H3 提示词正文仍可切英文输出
+  productFlow: { preset: 'daily_journey', steps: PRODUCT_FLOW_PRESETS.daily_journey.steps.slice() },
   // ===== 爆款文案工坊状态 =====
   currentTab: 'h3', // 'h3' | 'viral'
   viralProduct: '',
@@ -168,10 +168,15 @@ function renderFlowSection() {
   const tip = document.getElementById('flowTip');
   if (!presetWrap || !stepsWrap) return;
 
-  // 预设按钮
+  // 预设按钮（带图标 + 主题色 + 短标签，让"每一项"明显不同）
   presetWrap.innerHTML = Object.entries(PRODUCT_FLOW_PRESETS).map(function (entry) {
     const id = entry[0], p = entry[1];
-    return `<button type="button" class="flow-preset-btn ${state.productFlow.preset === id ? 'active' : ''}" data-preset="${id}" title="${p.desc}">${p.name}</button>`;
+    const m = FLOW_PRESET_META[id] || { icon: '🎬', color: '#888', tag: '' };
+    const active = state.productFlow.preset === id ? 'active' : '';
+    return `<button type="button" class="flow-preset-btn ${active}" data-preset="${id}" title="${p.desc}" style="--pc:${m.color}">
+      <span class="fp-icon">${m.icon}</span>
+      <span class="fp-text"><span class="fp-name">${p.name}</span><span class="fp-tag">${m.tag}</span></span>
+    </button>`;
   }).join('');
 
   // 步骤列表：已选在前（按当前顺序），未选在后
@@ -179,6 +184,7 @@ function renderFlowSection() {
   stepsWrap.innerHTML = PRODUCT_FLOW_STEP_ORDER.map(function (id) {
     const step = PRODUCT_FLOW_STEPS[id];
     if (!step) return '';
+    const sm = FLOW_STEP_META[id] || { icon: '•', blurb: '' };
     const idx = steps.indexOf(id);
     const selected = idx !== -1;
     const isFirst = idx <= 0;
@@ -186,8 +192,9 @@ function renderFlowSection() {
     return `<div class="flow-step-row ${selected ? 'selected' : ''}">
       <label class="flow-step-label">
         <input type="checkbox" data-step="${id}" ${selected ? 'checked' : ''}>
-        <span class="fs-name">${step.name}</span>
-        <span class="fs-name-en">${step.nameEn}</span>
+        <span class="fs-icon">${sm.icon}</span>
+        <span class="fs-text"><span class="fs-name">${step.name}</span><span class="fs-name-en">${step.nameEn}</span></span>
+        <span class="fs-blurb">${sm.blurb}</span>
       </label>
       <div class="flow-step-actions">
         <button type="button" class="fs-btn" data-up="${id}" ${!selected || isFirst ? 'disabled' : ''} title="上移">↑</button>
@@ -197,8 +204,12 @@ function renderFlowSection() {
   }).join('');
 
   if (tip) {
-    const names = steps.map(function (id) { return (PRODUCT_FLOW_STEPS[id] || {}).name || id; });
-    tip.textContent = names.length ? ('当前流程：' + names.join(' → ')) : '请至少勾选一个环节';
+    const names = steps.map(function (id) {
+      const m = FLOW_STEP_META[id] || {};
+      const n = (PRODUCT_FLOW_STEPS[id] || {}).name || id;
+      return (m.icon ? (m.icon + ' ') : '') + n;
+    });
+    tip.textContent = names.length ? ('当前流程（一步步衔接）：' + names.join(' → ')) : '请至少勾选一个环节';
   }
 
   // 绑定预设按钮
@@ -250,7 +261,7 @@ function onVideoTypeChange() {
   if (flowSec) flowSec.style.display = isProduct ? 'block' : 'none';
   if (shotGroup) shotGroup.style.display = isProduct ? 'none' : 'block';
   if (isProduct && (!state.productFlow || !state.productFlow.steps.length)) {
-    state.productFlow = { preset: 'standard', steps: PRODUCT_FLOW_PRESETS.standard.steps.slice() };
+    state.productFlow = { preset: 'daily_journey', steps: PRODUCT_FLOW_PRESETS.daily_journey.steps.slice() };
   }
   if (isProduct) renderFlowSection();
 }
@@ -546,12 +557,38 @@ function bindGenMode() {
       state.genMode = card.dataset.mode;
       const sec = document.getElementById('refImagesSection');
       if (sec) sec.style.display = state.genMode === 'i2v' ? 'block' : 'none';
-      if (state.genMode === 'i2v' && state.referenceImages.length === 0) {
-        state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
+      // 注意：图生视频不再强制预选参考图——生成后系统按每个镜头自动设计「本镜头参考图清单」，
+      // 用户按需上传即可；如需统一的品牌/产品主图全程复用，可在此可选添加（scope 全为「全部镜头」）。
+    });
+  });
+
+  // 参考图添加/删除/编辑事件
+  const addBtn = document.getElementById('addRefImageBtn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
+    renderRefImageRows();
+  });
+
+  const list = document.getElementById('refImageList');
+  if (list) {
+    list.addEventListener('input', (e) => {
+      const row = e.target.closest('.ref-row');
+      if (!row) return;
+      const idx = parseInt(row.dataset.idx, 10);
+      const field = e.target.dataset.field;
+      if (field === 'type') state.referenceImages[idx].type = e.target.value;
+      else if (field === 'desc') state.referenceImages[idx].desc = e.target.value;
+      else if (field === 'scope') state.referenceImages[idx].scope = (e.target.value === 'all') ? 'all' : parseInt(e.target.value, 10);
+    });
+    list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ref-del')) {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        state.referenceImages.splice(idx, 1);
         renderRefImageRows();
       }
     });
-  });
+  }
+}
 
 function bindFlowSelector() {
   const grid = document.getElementById('flowGrid');
@@ -595,35 +632,6 @@ function renderGridCells() {
       state.gridCells[i] = inp.value;
     });
   });
-}
-
-  const addBtn = document.getElementById('addRefImageBtn');
-  if (addBtn) addBtn.addEventListener('click', () => {
-    state.referenceImages.push({ type: getNextRefDefaultType(), desc: '', scope: 'all' });
-    renderRefImageRows();
-  });
-
-  const list = document.getElementById('refImageList');
-  if (list) {
-    // 输入即时写入 state
-    list.addEventListener('input', (e) => {
-      const row = e.target.closest('.ref-row');
-      if (!row) return;
-      const idx = parseInt(row.dataset.idx, 10);
-      const field = e.target.dataset.field;
-      if (field === 'type') state.referenceImages[idx].type = e.target.value;
-      else if (field === 'desc') state.referenceImages[idx].desc = e.target.value;
-      else if (field === 'scope') state.referenceImages[idx].scope = (e.target.value === 'all') ? 'all' : parseInt(e.target.value, 10);
-    });
-    // 删除
-    list.addEventListener('click', (e) => {
-      if (e.target.classList.contains('ref-del')) {
-        const idx = parseInt(e.target.dataset.idx, 10);
-        state.referenceImages.splice(idx, 1);
-        renderRefImageRows();
-      }
-    });
-  }
 }
 
 function renderRefImageRows() {
@@ -1104,7 +1112,7 @@ function renderStoryboard() {
 
   // 分镜数量 / 总时长标题
   const modeLabel = (state.formData.genMode === 'i2v')
-    ? (' · 图生视频 ' + (state.formData.referenceImages ? state.formData.referenceImages.length : 0) + ' 张参考图')
+    ? ' · 图生视频（按镜头自动设计参考图）'
     : ' · 文生视频';
   document.getElementById('sceneCount').textContent = n + ' 个镜头 · 每段 ' + (scenes[0] ? scenes[0].duration : 15) + ' 秒 · 共 ' + total + ' 秒' + modeLabel + ' · 提示词约 ' + totalChars + ' 字';
 
@@ -1184,6 +1192,24 @@ function createSceneCard(scene, index, startSec) {
   const nextScene = (index < state.scenes.length - 1) ? state.scenes[index + 1] : null;
   const shotBlock = buildShotBrief(scene, index, startSec, lang, refNote, refImages, nextScene);
 
+  // 图生视频：按镜头自动设计的参考图清单（全局固定图 + 本镜头设计图），供用户在 H3 按此上传
+  const eff = getEffectiveRefs(refImages, scene.refPlan);
+  const showRefPlan = (state.formData.genMode === 'i2v' && eff.all.length > 0);
+  const refPlanHtml = showRefPlan ? (
+    '<div class="ref-plan">' +
+      '<div class="rp-head">📷 本镜头参考图（图生视频 · 在 H3 按此顺序上传）</div>' +
+      '<ul class="rp-list">' +
+        eff.all.map(function (r, i) {
+          const num = i + 1;
+          const isFixed = i < eff.fixed.length;
+          let tag = isFixed ? '固定复用' : (r.role === 'subject' ? '主体·建议全程同图' : (r.role === 'style' ? '首镜定调' : '场景'));
+          return '<li><span class="rp-num">图' + num + '</span><span class="rp-tag' + (isFixed ? ' fixed' : '') + '">' + tag + '</span><span class="rp-desc">' + escapeHtml(r.desc || r.type || '参考图') + '</span></li>';
+        }).join('') +
+      '</ul>' +
+      '<div class="rp-note">每个镜头独立在 H3 生成后拼接成片；主体图建议全程用同一张，保证主体一致。</div>' +
+    '</div>'
+  ) : '';
+
   card.innerHTML = `
     <div class="scene-header">
       <div class="scene-number">${index + 1}</div>
@@ -1204,12 +1230,13 @@ function createSceneCard(scene, index, startSec) {
         <span>${scene.directorNote}</span>
       </div>
       <div class="tech-grid">
-        <div class="tech-item"><div class="t-label">运镜</div><div class="t-value">${scene.cameraMovement}</div></div>
-        <div class="tech-item"><div class="t-label">光影</div><div class="t-value">${scene.lighting}</div></div>
-        <div class="tech-item"><div class="t-label">色彩</div><div class="t-value">${scene.colorGrading}</div></div>
+        <div class="tech-item"><div class="t-label">运镜</div><div class="t-value">${isZh ? ((typeof CAM_ZH !== 'undefined' && CAM_ZH[scene.cameraMovement]) || scene.cameraMovement || '自然运镜') : (scene.cameraMovement || '自然运镜')}</div></div>
+        <div class="tech-item"><div class="t-label">光影</div><div class="t-value">${isZh ? ((typeof LIGHT_ZH !== 'undefined' && LIGHT_ZH[scene.lighting]) || scene.lighting || '自然光') : (scene.lighting || '自然光')}</div></div>
+        <div class="tech-item"><div class="t-label">色彩</div><div class="t-value">${isZh ? (scene.colorGradingZh || scene.colorGrading || '精致调色') : (scene.colorGrading || '精致调色')}</div></div>
         <div class="tech-item"><div class="t-label">画面文字</div><div class="t-value">${scene.textOverlay ? '有' : '无'}</div></div>
       </div>
       ${scene.dialogueLine ? `<div class="dialogue-box"><span class="label">台词 / 配音</span><span class="dialogue-text">${escapeHtml(scene.dialogueLine)}</span></div>` : ''}
+      ${refPlanHtml}
       <div class="prompt-section">
         <div class="prompt-label">
           <span class="pname"><span class="dot" style="background:var(--accent)"></span>直投提示词 [Shot ${index + 1}] ${langTag}（可直接粘贴到海螺 H3）</span>

@@ -1133,6 +1133,15 @@ function generateScenePrompt(ctx, scene) {
     musicZh = zhTpl.music(ctx);
     if (ctx.narrativeFlavorZh) visualZh += ' ' + ctx.narrativeFlavorZh;
     if (ctx.industryNarrativeZh) visualZh += ' ' + ctx.industryNarrativeZh;
+  } else if (result.visualZh) {
+    // 步骤自带中文（生活叙事流等连贯步骤）：直接使用，并注入风格/行业叙事DNA与品牌清理
+    visualZh = result.visualZh;
+    if (!ctx.hasBrand) visualZh = stripInactiveBrandVisual(visualZh);
+    visualZhBase = visualZh;
+    soundscapeZh = result.soundscapeZh || result.soundscape;
+    musicZh = result.musicZh || result.music;
+    if (ctx.narrativeFlavorZh) visualZh += ' ' + ctx.narrativeFlavorZh;
+    if (ctx.industryNarrativeZh) visualZh += ' ' + ctx.industryNarrativeZh;
   } else {
     // 兜底：没有中文模板时使用英文
     visualZh = visualEn;
@@ -1170,7 +1179,12 @@ function generateScenePrompt(ctx, scene) {
     musicZh: musicZh,
     promptZh: promptZh,
     aspectRatio: ctx.aspectRatio,
-    colorGrading: ctx.colorGrading
+    colorGrading: ctx.colorGrading,
+    colorGradingZh: ctx.colorGradingZh,
+    lightingDescZh: ctx.lightingDescZh,
+    // 镜头衔接：本镜结尾（供下一镜开头使用）
+    continuityTailZh: result.tailZh || '',
+    continuityTailEn: result.tailEn || ''
   };
 
   return sceneData;
@@ -1246,10 +1260,24 @@ function buildContext(formData) {
     eventDate: formData.eventDate || '',
     eventLocation: formData.eventLocation || '',
 
+    // 主角人设：让多镜头共享"同一个人"，串成真实生活流（生活叙事流核心）
+    personaZh: (PERSONA_MAP[formData.industry] || PERSONA_MAP._default).zh,
+    personaEn: (PERSONA_MAP[formData.industry] || PERSONA_MAP._default).en,
+
     // 相机运动（从场景模板中获取，这里提供默认值）
     cameraMovement: ''
   };
 }
+
+// 主角人设：按行业给一个真实、可共鸣的"同一个人"，避免镜头各说各话
+const PERSONA_MAP = {
+  hydro: { zh: '一位长期伏案、肩颈常常紧绷的职场人', en: 'a desk-bound professional whose neck and shoulders stay tense' },
+  health: { zh: '一位开始重视日常养护的都市人', en: 'an urbanite who has started valuing everyday self-care' },
+  tech: { zh: '一位被各种设备包围、渴望效率的都市人', en: 'a city dweller surrounded by gadgets, chasing efficiency' },
+  lighting: { zh: '一位在意居家光环境的屋主', en: 'a homeowner who cares about home lighting' },
+  ticket: { zh: '一位怕麻烦、只想省心的人', en: 'someone who dislikes hassle and wants peace of mind' },
+  _default: { zh: '一位注重生活品质的普通人', en: 'an ordinary person who values quality of life' }
+};
 
 /**
  * 剧情反转风格专用分镜模板
@@ -1553,6 +1581,116 @@ PRODUCT_FLOW_STEPS.brand_story = {
   }
 };
 
+// ========== 生活叙事流：同一个人的一天，镜头一步步衔接 ==========
+// 设计目标：解决"各 15 秒镜头彼此独立、天马行空、一个不挨一个"的问题。
+// 每条提示词共享同一个主角人设（ctx.personaZh/En），并通过 tail（上一镜结尾）→ prevTail（下一镜开头）串成真实生活流。
+PRODUCT_FLOW_STEPS.day_setup = {
+  id: 'day_setup', name: '职场铺垫', nameEn: 'Daily Grind', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera follows with a slow, empathetic push-in',
+  lighting: 'soft, natural light with a slightly cool, weary tone',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '生活叙事流·第一镜：铺垫同一个人的疲惫现状，不卖货、只共鸣。建立"身体需要被照顾"的情绪，为后续回家做 SPA 埋下钩子。',
+  generate(ctx) {
+    const personaEn = ctx.personaEn, personaZh = ctx.personaZh;
+    const voEn = ctx.voiceoverText || 'We take care of everything — yet so often forget the body that carries us through it all.';
+    const voZh = ctx.voiceoverText || '我们总在照顾一切，却常常忘了照顾承载这一切的身体。';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, a medium shot follows ${personaEn} through a packed workday — long hours at the desk, tense neck and shoulders, a body quietly overdrawn. ${ctx.cameraMovement}. Soft, slightly cool light hints at quiet fatigue. They pause, lift a hand to the back of the neck, a small moment of realizing the body needs care too. ${ctx.colorGrading}.`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，中景镜头跟拍${personaZh}——长时间伏案、肩颈紧绷、身体悄悄透支的一整天。镜头以缓慢、共情的推进，光线柔和却略带清冷，透出隐约的疲惫。此人停顿，抬手扶向后颈，一个"身体也需要被照顾"的微小醒觉。${ctx.colorGradingZh}。`,
+      soundscape: `The muffled rush of a busy day — distant typing, a soft sigh, the faint hum of city life — settling into a calmer, more intimate room tone.`,
+      soundscapeZh: `忙碌一天的闷响底噪——远处键盘声、一声轻叹、城市微鸣，逐渐沉淀为更安静、私密的空间感。`,
+      music: `A gentle, reflective piano melody at a slow tempo, sparse and warm, with a single sustained string note that opens space for thought.`,
+      musicZh: `缓慢、内省的钢琴旋律，稀疏温暖，一记持续的弦音留出思考空间。`,
+      tailEn: 'As quitting time nears, they tidy the desk and head home, shedding the commute fatigue.',
+      tailZh: '下班回到家中，Ta卸下通勤的疲惫'
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.home_return = {
+  id: 'home_return', name: '回家过渡', nameEn: 'Heading Home', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera tracks gently from the doorway to the living room',
+  lighting: 'warm, inviting home lighting',
+  textOverlay: false,
+  voiceover: false,
+  directorNote: '生活叙事流·过渡镜：承接上一镜"下班回家"，从外界回到私人空间，节奏放慢，为居家 SPA 做铺垫。',
+  generate(ctx) {
+    const prevZh = ctx.prevTailZh ? (ctx.prevTailZh + '，') : '';
+    const prevEn = ctx.prevTailEn ? (ctx.prevTailEn + ' ') : '';
+    const personaZh = ctx.personaZh, personaEn = ctx.personaEn;
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, ${prevEn}${personaEn} returns home, slips off the commute shoes and jacket, leaving the crowded outside world for a quiet personal space; the pace slows noticeably. ${ctx.cameraMovement}. Warm home light wraps in. ${ctx.colorGrading}.`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，${prevZh}${personaZh}下班回到家中，换下通勤的鞋与外套，从拥挤的外界回到属于自己的安静空间，节奏明显慢了下来。镜头以缓慢速度从玄关跟拍到客厅，暖色调的居家光线包裹进来。${ctx.colorGradingZh}。`,
+      soundscape: `The click of the door, shoes set down, a kettle beginning to hum — the outside noise fading into a calm home bed.`,
+      soundscapeZh: `关门声、放鞋声、水壶开始轻声作响——外界的嘈杂淡出，化作安静的居家底噪。`,
+      music: `A warm, mellow acoustic piece at a moderate tempo, soft pads and a gentle, reassuring rhythm.`,
+      musicZh: `中等速度、温暖柔和的木吉他曲，柔软铺底与温和安心的节奏。`,
+      tailEn: 'They move to the living room, ready to care for the body tense all day.',
+      tailZh: 'Ta来到客厅，准备好好照顾一下紧绷了一整天的身体'
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.home_spa = {
+  id: 'home_spa', name: '居家SPA', nameEn: 'Home Spa Ritual', duration: 5,
+  shotType: 'close-up shot',
+  cameraMovement: 'The camera performs a slow 360-degree arc around the subject and product',
+  lighting: 'warm, inviting studio lighting',
+  textOverlay: false,
+  voiceover: true,
+  directorNote: '生活叙事流·核心镜：同一个人在家真实使用产品做水疗 SPA，放松舒缓。合规：只讲调理舒缓，绝不作功效承诺（行业叙事自动注入）。',
+  generate(ctx) {
+    const prevZh = ctx.prevTailZh ? (ctx.prevTailZh + '，') : '';
+    const prevEn = ctx.prevTailEn ? (ctx.prevTailEn + ' ') : '';
+    const personaZh = ctx.personaZh, personaEn = ctx.personaEn;
+    const subject = ctx.product || ctx.industryData.productContext || ctx.brand || 'the product';
+    const subjectZh = ctx.product || ctx.industryData.productContext || ctx.brand || '这款产品';
+    const voEn = ctx.voiceoverText || 'A few quiet minutes at home — letting the body relax, unwind, and feel cared for.';
+    const voZh = ctx.voiceoverText || '在家里的几分钟，让身体放松下来，被好好照顾。';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, ${prevEn}${personaEn} uses ${subject} for a home spa session in their own living room or bedroom — a real, everyday use, relaxed and soothing. ${ctx.cameraMovement}. Warm light wraps the scene; the day's tension visibly softens. ${ctx.colorGrading}.`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，${prevZh}${personaZh}在自家客厅或卧室里，用${subjectZh}做一次居家水疗 SPA——真实的使用过程，放松而舒缓。镜头以缓慢速度做 360 度环绕，暖意包裹画面，肩颈的紧绷悄然软化。${ctx.colorGradingZh}。`,
+      soundscape: `The soft trickle of water and a faint, soothing hum under a calm home ambience.`,
+      soundscapeZh: `水流的轻柔潺潺与安稳、舒缓的居家底噪下的细微嗡鸣。`,
+      music: `A warm, mellow acoustic piece at a moderate tempo, with soft pads and a gentle, reassuring rhythm.`,
+      musicZh: `中等速度、温暖柔和的木吉他曲，柔软铺底与温和安心的节奏。`,
+      tailEn: 'When the ritual ends, the tense neck and shoulders have quietly loosened.',
+      tailZh: '一套流程做完，紧绷的肩颈悄悄松开了'
+    };
+  }
+};
+
+PRODUCT_FLOW_STEPS.benefit_show = {
+  id: 'benefit_show', name: '好处展示', nameEn: 'What It Helps With', duration: 5,
+  shotType: 'medium shot',
+  cameraMovement: 'The camera holds a steady, reassuring frame then slowly pulls back',
+  lighting: 'bright, warm, inviting light',
+  textOverlay: true,
+  voiceover: true,
+  directorNote: '生活叙事流·收尾镜：回到产品本身，讲清它带来的日常体验与好处（帮助放松肩颈、忙碌后得到舒缓、把养生变随手可做的小仪式）。不硬广、贴合实际。',
+  generate(ctx) {
+    const prevZh = ctx.prevTailZh ? (ctx.prevTailZh + '，') : '';
+    const prevEn = ctx.prevTailEn ? (ctx.prevTailEn + ' ') : '';
+    const subject = ctx.product || ctx.industryData.productContext || ctx.brand || 'the product';
+    const subjectZh = ctx.product || ctx.industryData.productContext || ctx.brand || '这款产品';
+    const voEn = ctx.voiceoverText || 'Small daily rituals add up — a few quiet minutes that help the body relax, unwind, and feel cared for.';
+    const voZh = ctx.voiceoverText || '日常的小仪式会累积——几分钟的安静，帮身体放松、舒缓，也让自己被照顾到。';
+    return {
+      visual: `[Shot 1] ${ctx.styleKeywords}, ${prevEn}the frame returns to ${subject} itself, showing the everyday experience and benefits it brings — helping tense shoulders relax, offering relief after a busy day, turning home wellness into a small ritual within easy reach. ${ctx.cameraMovement}. Bright, warm light; the product's form and texture clearly visible. ${ctx.colorGrading}. Clean text overlays read: "Relax", then "Everyday Ease".`,
+      visualZh: `[镜头1] ${ctx.styleKeywordsZh}，${prevZh}镜头回到${subjectZh}本身，讲清它带来的日常体验与好处——帮紧绷的肩颈放松、让忙碌一天后得到舒缓、把居家养生变成随手可做的小仪式。镜头匀速拉回，明亮温暖的光，产品外观与质感清晰可辨。${ctx.colorGradingZh}。画面以清爽无衬线字体淡入文字："放松"，随后"日常轻松"。`,
+      soundscape: `Soft ambient room tone, a slow even breath, the faint trickle of water.`,
+      soundscapeZh: `安静的房间底噪、缓慢均匀的呼吸、水流的细微潺潺。`,
+      music: `A very soft, minimal ambient pad at a slow tempo, breathing with the scene.`,
+      musicZh: `极轻柔、极简的环境铺底，缓慢呼吸般与画面同频。`,
+      tailEn: '',
+      tailZh: ''
+    };
+  }
+};
+
 // 预设流程：选一个快速套用，之后再自由增删 / 排序
 const PRODUCT_FLOW_PRESETS = {
   standard: {
@@ -1574,17 +1712,53 @@ const PRODUCT_FLOW_PRESETS = {
     name: '极简种草流',
     desc: '产品亮相 → 设备好处 → 使用场景（三镜说完）',
     steps: ['reveal', 'benefits', 'lifestyle']
+  },
+  daily_journey: {
+    name: '生活叙事流',
+    desc: '职场疲惫铺垫 → 居家用产品做 SPA → 展示设备好处（同一个人的一天，镜头一步步衔接）',
+    steps: ['day_setup', 'home_spa', 'benefit_show']
   }
 };
 
 // 流程步骤在面板中的展示顺序（含全部可选项）
 const PRODUCT_FLOW_STEP_ORDER = [
   'problem', 'reveal', 'features', 'lifestyle', 'cta',
-  'health_awareness', 'benefits', 'audience', 'reaction', 'brand_story'
+  'health_awareness', 'benefits', 'audience', 'reaction', 'brand_story',
+  'day_setup', 'home_return', 'home_spa', 'benefit_show'
 ];
+
+// 流程预设的视觉元数据（图标 + 主题色 + 短标签），让"每一项"在面板上明显不同
+const FLOW_PRESET_META = {
+  standard: { icon: '📈', color: '#4f9cff', tag: '带货转化' },
+  educate: { icon: '🌱', color: '#43c59e', tag: '科普种草' },
+  trust: { icon: '🛡️', color: '#b98cff', tag: '品牌信任' },
+  minimal: { icon: '✨', color: '#ffb454', tag: '极简' },
+  daily_journey: { icon: '🎬', color: '#ff6b9d', tag: '故事线' }
+};
+// 流程步骤的视觉元数据（图标 + 一句话说明），让每个环节一眼可辨
+const FLOW_STEP_META = {
+  problem: { icon: '😣', blurb: '抛出现实痛点，引发共鸣' },
+  reveal: { icon: '🎯', blurb: '产品英雄镜头揭晓' },
+  features: { icon: '⚙️', blurb: '展示功能与工艺细节' },
+  lifestyle: { icon: '🏠', blurb: '真实生活场景融入' },
+  cta: { icon: '🛒', blurb: '引导下单 / 了解' },
+  health_awareness: { icon: '💡', blurb: '先共鸣：身体需要被照顾' },
+  benefits: { icon: '💆', blurb: '讲清体验与好处' },
+  audience: { icon: '👥', blurb: '适合的人群' },
+  reaction: { icon: '🌿', blurb: '调理期好转反应科普' },
+  brand_story: { icon: '🏛️', blurb: '品牌初心与理念' },
+  day_setup: { icon: '💼', blurb: '职场疲惫铺垫（不卖货）' },
+  home_return: { icon: '🚪', blurb: '下班回家·过渡衔接' },
+  home_spa: { icon: '🛁', blurb: '居家用产品做 SPA' },
+  benefit_show: { icon: '✅', blurb: '展示设备能帮什么' }
+};
 
 function generateStoryboard(formData) {
   const ctx = buildContext(formData);
+  // 图生视频：按镜头自动设计参考图所需上下文
+  const isZh = (typeof state !== 'undefined' && state.lang === 'zh');
+  const globalFixed = (formData.referenceImages || []).filter(function (r) { return !r.scope || r.scope === 'all'; });
+  const hasGlobalFixed = globalFixed.length > 0;
   // 产品广告：若用户选择了「流程」，则按所选步骤组装（自由组合 / 排序）；剧情反转风格仍走专用模板
   const isProductFlow = (formData.videoType === 'product' && formData.style !== 'twist'
     && Array.isArray(formData.flowSteps) && formData.flowSteps.length > 0);
@@ -1613,13 +1787,20 @@ function generateStoryboard(formData) {
 
   // 按 shotCount 取镜头模板（环绕），每段统一为 shotDur 秒
   const scenes = [];
+  // 镜头衔接：上一镜的结尾（tail）作为下一镜的开头（prevTail），串成连续故事
+  let prevTailZh = '';
+  let prevTailEn = '';
   for (let i = 0; i < shotCount; i++) {
     const scene = templates[i % templates.length];
     const sceneCtx = {
       ...ctx,
       cameraMovement: scene.cameraMovement,
       lightingDesc: scene.lighting || ctx.lightingDesc,
-      dialogueLine: ctx.dialogueLines[i] || ''
+      dialogueLine: ctx.dialogueLines[i] || '',
+      prevTailZh: prevTailZh,
+      prevTailEn: prevTailEn,
+      sceneIndex: i,
+      totalScenes: shotCount
     };
     const data = generateScenePrompt(sceneCtx, scene);
     data.duration = shotDur; // 每段固定时长（H3 单次生成上限 15 秒）
@@ -1633,9 +1814,110 @@ function generateStoryboard(formData) {
     data.dialogueLang = formData.dialogueLang || '中文';
     data.opponent = formData.opponent || '';
     data.equipBound = formData.equipBound || '';
+    data.continuityTailZh = data.continuityTailZh || '';
+    data.continuityTailEn = data.continuityTailEn || '';
+    // 图生视频：按镜头自动设计本镜头所需参考图（用户无需预先选择，生成后按清单上传）
+    // ⚠️ 参考图清单是给用户的操作指南，永远用中文（不受 state.lang 提示词输出语言影响）
+    data.refPlan = designateShotReferences(data, i, ctx, true, hasGlobalFixed);
+    // 把本镜结尾传给下一镜，形成衔接
+    prevTailZh = data.continuityTailZh;
+    prevTailEn = data.continuityTailEn;
     scenes.push(data);
   }
   return scenes;
+}
+
+// ========== 图生视频：按镜头自动设计参考图（用户无需预先选择，生成后按清单上传）==========
+// 设计原则：每个镜头独立在 H3 生成后再拼接；主体图建议全程复用同一张以保证一致；
+// 场景图随镜头变化；风格图仅在首镜定调（后续可复用同图）。若用户提供了「全局固定图」，则主体由固定图承担，本函数只补充场景图。
+// ⚠️ 描述必须用**操作指南式大白话**——用户看到后立刻知道该上传什么类型的图片。
+// 禁止出现英文术语、禁止粘贴镜头画面原文、禁止抽象描述。
+
+// ===== 图1：主体/产品参考图 —— 告诉用户该拍/找一张什么产品照片 =====
+function buildSubjectRefDesc(ctx, scene, isZh) {
+  const p = (ctx.product || '').trim();
+  const b = (ctx.brand || '').trim();
+  const ind = (ctx.industryName || '').trim();
+  const core = p || b || ind || '你的产品或主体';
+  if (isZh) {
+    return '📷 请上传一张「' + core + '」的产品实拍图（正面或 45° 角，纯色/浅色背景最佳，不要带场景、不要带人物、不要带文字水印）。如果产品是设备/仪器，拍整体外观即可；如果是服务/课程，拍品牌 LOGO 或代表性道具。';
+  }
+  return '📷 Upload a clear product photo of "' + core + '" — front or 45° angle, plain/light background only. No scenery, no people, no text overlay.';
+}
+
+// ===== 辅助：从镜头画面描述中提炼具体场景类型 =====
+// 匹配优先级从高到低：越具体的场景类型越先匹配；兜底给通用描述而非强行归类
+function extractSceneTypeZh(visualText) {
+  const txt = visualText.toLowerCase();
+  // 第一梯队：强信号词（几乎不会误判）
+  if (/水疗|养生|调理|理疗|按摩|汗蒸|SPA|浴场|康养|超声水疗/.test(txt)) return '💆 水疗/养生场馆环境图（理疗室或设备使用区域）';
+  if (/医院|诊所|诊室|医生|护士|检查|治疗|康复/.test(txt)) return '🏥 医疗/康复环境图（专业洁净感）';
+  if (/健身房|运动|训练|跑步|器械|瑜伽/.test(txt)) return '🏋️ 健身房/运动空间环境图';
+  if (/教室|学校|培训|学习|讲课/.test(txt)) return '🎓 教室/培训空间环境图';
+  if (/餐厅|咖啡|用餐|美食|厨房/.test(txt)) return '🍽️ 餐厅/餐饮环境图';
+
+  // 第二梯队：中等信号词（需要更多上下文才判定）
+  if (/伏案|办公|键盘|工位|电脑前|写字楼|加班|上班族/.test(txt)) return '🏢 办公室/工位环境图（桌椅、电脑可见，自然光或室内灯光）';
+  if (/居家|客厅|卧室|家中|家里|沙发|床|家庭|居家养生/.test(txt)) return '🏠 居家客厅/卧室环境图（生活化布置，柔和光线）';
+  if (/户外|公园|街道|庭院|自然光.*室外|蓝天|绿植/.test(txt)) return '🌳 户外自然环境图（白天自然光，公园/街道/庭院一角）';
+  if (/店铺|商场|橱窗|货架|购物|卖场|门店|展厅陈列/.test(txt)) return '🏪 店铺/展厅环境图（产品陈列区，明亮整洁）';
+
+  // 第三梯队：弱信号词（仅在有明确上下文时匹配，避免误判）
+  // 工厂/车间：必须出现"工厂"或"车间"或"生产线"本身，单凭"制造"不判定
+  if (/工厂|车间|生产线/.test(txt)) return '🏭 工厂/生产环境图';
+
+  // 兜底：不强行归类，给出通用描述 + 画面片段供用户参考
+  const fp = (visualText.match(/[^。，。\n]{10,50}/) || [''])[0];
+  if (fp) return '🖼️ 与本镜头匹配的环境图：「' + fp.slice(0,35) + '」——找氛围接近的实景照片';
+  return '🖼️ 本镜头所需的环境参考图（实景照片）';
+}
+
+// ===== 图2：场景/环境参考图 =====
+function buildSceneRefDesc(scene, ctx, isZh) {
+  if (isZh) {
+    let vis = (scene.visualZhBase || scene.visualZh || scene.visualEnBase || scene.visualEn || '');
+    vis = (' ' + vis).replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+    return extractSceneTypeZh(vis);
+  }
+  let ve = (scene.visualEnBase || scene.visualEn || '').replace(/\s*\[(?:Shot|镜头)\s*\d+\]\s*/gi, ' ').trim();
+  const t = ve.toLowerCase();
+  if (/office|desk|keyboard|workplace|busy day/.test(t)) return '🏢 Office/workspace environment';
+  if (/home|living room|bedroom|couch|domestic|house/.test(t)) return '🏠 Home interior (living room or bedroom)';
+  if (/outdoor|park|street|sunlight|nature/.test(t)) return '🌳 Outdoor environment (daytime)';
+  if (/spa|wellness|therapy|massage/.test(t)) return '💆 Spa/wellness space';
+  if (/store|shop|retail|display/.test(t)) return '🏪 Store/showroom environment';
+  if (/hospital|clinic|medical/.test(t)) return '🏥 Medical/rehabilitation space';
+  if (/gym|fitness|workout|yoga/.test(t)) return '🏋️ Gym/fitness space';
+  const fpe = (ve.match(/[^.,;\n]{10,60}/) || [''])[0];
+  if (fpe) return '🖼️ Environment: "' + fpe.slice(0,50) + '"';
+  return '🖼️ Real-environment reference for this shot';
+}
+
+// ===== 图3：风格/光影参考图（仅首镜）=====
+function buildStyleRefDesc(ctx, isZh) {
+  const cg = isZh ? (ctx.colorGradingZh || ctx.colorGrading || '精致调色') : (ctx.colorGrading || '');
+  if (isZh) return '🎨 风格参考图（可选）：找一张色调接近「' + cg + '」的照片或电影截图。只看颜色氛围，内容无关。没有也行。';
+  return '🎨 Style reference (optional): any photo with "' + cg + '" color mood. Skip if unavailable.';
+}
+function designateShotReferences(scene, index, ctx, isZh, hasGlobalFixed) {
+  const refs = [];
+  if (!hasGlobalFixed) {
+    refs.push({ type: isZh ? '主体/产品' : 'product', role: 'subject', reuse: true,
+      desc: buildSubjectRefDesc(ctx, scene, isZh) });
+  }
+  refs.push({ type: isZh ? '场景/环境' : 'scene', role: 'scene', reuse: false,
+    desc: buildSceneRefDesc(scene, ctx, isZh) });
+  if (index === 0) {
+    refs.push({ type: isZh ? '风格/光影' : 'style', role: 'style', reuse: false,
+      desc: buildStyleRefDesc(ctx, isZh) });
+  }
+  return refs;
+}
+// 有效参考图：全局固定图（scope all/未设）在前，本镜头设计图在后；用于 @image#N 前缀编号
+function getEffectiveRefs(globalRefs, shotPlan) {
+  const fixed = (globalRefs || []).filter(function (r) { return r.scope === undefined || r.scope === null || r.scope === 'all'; });
+  const perShot = (shotPlan || []).map(function (p) { return { type: p.type, desc: p.desc, role: p.role, reuse: !!p.reuse }; });
+  return { fixed: fixed, perShot: perShot, all: fixed.concat(perShot) };
 }
 
 // ========== 时长与时间码工具 ==========
@@ -1787,14 +2069,14 @@ function detectSubject(scene, lang) {
 function lockClauseZh(subject) {
   const p = [];
   if (subject.character) p.push('角色一致性：画面中人物五官、发型、服装、身材比例保持完全一致，不换脸、不变装、不融合人物特征');
-  if (subject.product) p.push('主体一致性：设备造型、材质、标识与结构细节保持完全一致，无变形、无多余元素增减');
+  if (subject.product) p.push('主体一致性：设备造型、材质、标识与结构细节保持完全一致，无变形、无多余元素增减。⚠️ 品牌标识铁律：产品上可见的品牌名称（如 MOYA）、型号标签（如 iSPA）、logo 图形、屏幕文字、控制面板字符等所有文字/符号必须与参考图**逐字一致**，禁止猜测、替换、改写或生成不存在的新文字');
   if (subject.scene || p.length === 0) p.push('场景一致性：空间陈设与光影基调保持统一稳定');
   return p.join('；') + '。';
 }
 function lockClauseEn(subject) {
   const p = [];
   if (subject.character) p.push('Character consistency: preserve face, hairstyle, costume and body proportions; no face-swap, wardrobe change or feature blending');
-  if (subject.product) p.push('Subject consistency: product geometry, material, logo and structural details stay fully consistent - no deformation, no added or removed elements');
+  if (subject.product) p.push('Subject consistency: product geometry, material, logo and structural details stay fully consistent - no deformation, no added or removed elements. ⚠️ Brand identity iron rule: ALL visible text on the product — brand names (e.g. MOYA), model labels (e.g. iSPA), logo graphics, screen text, control panel characters — must match the reference image EXACTLY character-by-character. NEVER guess, substitute, rewrite or generate new/nonexistent text.');
   if (subject.scene || p.length === 0) p.push('Scene consistency: space, set dressing and lighting base stay uniform and stable');
   return p.join('; ') + '.';
 }
@@ -2061,7 +2343,9 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const dur = scene.duration || 5;
   const genMode = (typeof state !== 'undefined' && state.formData && state.formData.genMode) || 't2v';
   const isI2V = genMode === 'i2v';
-  const imgs = (isI2V && Array.isArray(refImages) && refImages.length) ? refImages : [];
+  // 图生视频：有效参考图 = 全局固定图 + 本镜头设计图（每镜头独立编号）
+  const eff = getEffectiveRefs(refImages, scene.refPlan);
+  const imgs = (isI2V && eff.all.length) ? eff.all : [];
 
   // I2VA：在绝对开头输出「@Image1 as 人物参考@Image2 as 产品参考@Image3 as 场景参考」前缀，
   // 明确告诉 H3 每一张参考图是什么，强锚定主体/产品/环境，避免生成结果与参考图无关
@@ -2074,6 +2358,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
     const partial = [];
     for (let i = 1; i < imgs.length; i++) partial.push('<Picture ' + (i + 1) + '>');
     if (partial.length) line += ' ' + partial.join(' and ') + ' are partially referenced to establish the product and environment.';
+    line += ' ⚠️ Preserve ALL product details from the reference image exactly: brand names, model labels, logo graphics, screen text, control panel characters — every visible character must remain unchanged. Do not invent, guess or modify any text on the product.';
     instruction = line + '\n\n';
   }
 
@@ -2102,9 +2387,9 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   const enSubject = detectSubject(scene, 'en');
   const enBeats = genBeats(scene, 'en', segs, enSubject);
   const enGlobal = '=== Global Style & Consistency ===\n' +
-    'Resolution: 1080p+ (2K), 16:9 aspect ratio.\n' +
+    'Resolution: 1080p+ (2K), ' + (scene.aspectRatio || '16:9') + ' aspect ratio.\n' +
     lockClauseEn(enSubject) + '\n' +
-    'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen.\n\n';
+    'Negative constraints: cartoon/anime/chibi/infantile; modern clothing or architecture; plastic skin or over-smoothing; blurred faces or distorted features; wrong lip-sync; simultaneous speech or wrong speaker; irrelevant characters speaking; character fusion/face-swap/wardrobe change; extra people or limbs; overacting or cheap effects; camera shake or flickering; subtitles/text/watermarks on screen. ⚠️ CRITICAL: NEVER alter, guess or replace ANY visible text/brand/logo on the product — keep every character exactly as shown in the reference image.\n\n';
 
   const camEn = scene.cameraMovement || 'the camera moves naturally';
   const camSentence = camEn.charAt(0).toLowerCase() + camEn.slice(1);
@@ -2144,7 +2429,7 @@ function buildShotBriefEn(scene, index, startSec, refNote, refImages, nextScene)
   } else {
     imdFull += ' The shot ends on a stable, readable frame that naturally closes the film.';
   }
-  if (refNote) imdFull += refNote;
+  if (refNote && !isI2V) imdFull += refNote;
 
   // ---- 三字段组装 ----
   const sound = scene.soundscapeEn || 'soft ambient sound continues throughout';
@@ -2359,11 +2644,13 @@ function buildShotBriefZh(scene, index, startSec, refImages, nextScene) {
   const flow = scene.flow || 'auto';
   const mk = (typeof scene.marketingStyle === 'string' && MARKETING_STYLES[scene.marketingStyle]) ? scene.marketingStyle : 'none';
 
-  let header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
-  if (refImages && refImages.length) {
-    refImages.forEach(function (r, i) {
+  // 图生视频：有效参考图 = 全局固定图 + 本镜头设计图（每镜头独立编号，便于用户按镜头上传后拼接）
+  const eff = getEffectiveRefs(refImages, scene.refPlan);
+  let header = '生成一段 ' + dur + ' 秒、' + (scene.aspectRatio || '16:9') + '、2K、原生立体声、MiniMax H3 的视频。\n';
+  if (eff.all.length) {
+    eff.all.forEach(function (r, i) {
       const num = i + 1;
-      const t = r.type || (i === 0 ? '人物' : i === 1 ? '产品/设备' : '场景');
+      const t = r.type || (i === 0 ? '主体' : '参考');
       header += '@image#' + num + ' = ' + (r.desc || t) + '\n';
     });
   }
@@ -2394,14 +2681,20 @@ function buildNineGrid(formData) {
   const story = (typeof formData.story === 'string' ? formData.story : '').trim();
   const cells = Array.isArray(formData.gridCells) ? formData.gridCells : [];
 
+  const ratio = formData.aspectRatio || '16:9';
+  // 根据画幅比例自动匹配九宫格像素尺寸
+  const gridPixels = ({ '16:9':'2048×1152', '9:16':'1152×2048', '1:1':'2048×2048', '4:3':'2048×1536', '3:4':'1536×2048' }[ratio]) || '2048×1152';
+
   // 阶段A：3×3 故事板出图提示词（无图像工具时输出文本，不谎称已经生成）
-  const stageA = '【九宫格出图提示词】生成一张整体 16:9、2048×1152 的 3×3 故事板：九个等大宽银幕画格，使用细而整洁的中性分隔线。'
+  const stageA = '【九宫格出图提示词】生成一张整体 ' + ratio + '、' + gridPixels + ' 的 3×3 故事板：'
+    + (ratio === '9:16' ? '九个等大竖屏画格' : (ratio === '1:1' ? '九个等大方形画格' : '九个等大宽银幕画格'))
+    + '，使用细而整洁的中性分隔线。'
     + '稳定主体「' + subject + '」的身份、服装、装备、材质与关键配色贯穿九格；镜位、景别、姿态与动作必须明显变化，九格不重复同一种构图。'
     + (story ? ('故事线：' + story + '。') : '')
     + '九格从左到右、从上到下依次承担：①建立 ②触发 ③升级 ④第一次变化 ⑤中段主体状态 ⑥第二次升级 ⑦高潮形成 ⑧接近完成 ⑨最终画面。';
 
   // 阶段B：依据九格描述派生 H3 视频提示词
-  let stageB = '【九宫格派生 H3 视频提示词】生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
+  let stageB = '【九宫格派生 H3 视频提示词】生成一段 ' + dur + ' 秒、' + ratio + '、2K、原生立体声、MiniMax H3 的视频。\n';
   const refImages = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages) && formData.referenceImages.length)
     ? formData.referenceImages : [];
   if (refImages.length) {
@@ -2433,142 +2726,6 @@ function buildNineGrid(formData) {
 }
 
 // 参考图类型 → 英文（用于英文提示词）
-// ========== 爆款文案工坊：生成「抖音口播文案 + 海螺 H3 视频提示词」两部分 ==========
-function resolveRelation(relation) {
-  var r = (relation || '姐弟').trim();
-  var map = {
-    '姐弟': { selfCall: '弟弟', partnerCall: '姐姐', relationLabel: '姐弟', audience: '兄弟姐妹们', selfSex: '男', partnerSex: '女' },
-    '姐妹': { selfCall: '我', partnerCall: '我姐', relationLabel: '姐妹', audience: '姐妹们', selfSex: '女', partnerSex: '女' },
-    '兄弟': { selfCall: '我', partnerCall: '我哥', relationLabel: '兄弟', audience: '兄弟们', selfSex: '男', partnerSex: '男' },
-    '夫妻': { selfCall: '我', partnerCall: '我老婆', relationLabel: '夫妻', audience: '大家', selfSex: '男', partnerSex: '女' },
-    '单人': { selfCall: '我', partnerCall: '', relationLabel: '单人', audience: '大家', selfSex: '', partnerSex: '' }
-  };
-  if (map[r]) return map[r];
-  return { selfCall: '我', partnerCall: relation, relationLabel: relation, audience: '大家', selfSex: '', partnerSex: '' };
-}
-
-function buildViralCopyText(R, scene) {
-  var single = (R.relationLabel === '单人' || !R.partnerCall);
-  var me = single ? '我' : R.selfCall;
-  var p = R.partnerCall;
-  var sceneLine = (scene && scene.trim())
-    ? (p ? p + '：「' + scene.trim() + '，这才是最实在的。」'
-         : '我：「' + scene.trim() + '，这才是最实在的。」')
-    : '';
-  var lines = [];
-  if (single) {
-    lines.push(
-      '【0–3s 钩子】',
-      '我（对镜头）：「别人还在纠结买什么，我倒好——」',
-      '我：「把客厅折腾成了水疗馆。」',
-      '',
-      '【3–12s 展示】',
-      '我：「每天下班回来这么泡一泡，整个人都松下来了。」'
-    );
-    if (sceneLine) lines.push(sceneLine);
-    lines.push(
-      '我：「说不上多神奇，就是居家日子舒服点。」',
-      '',
-      '【12–22s 人设】',
-      '我：「我做这个，不为别的——」',
-      '我：「就是自己用着顺手，才敢推荐给你们。」',
-      '',
-      '【22–25s CTA】',
-      '我：「想要的朋友们，评论区扣个『1』，我把清单整理好发你。」',
-      '我：「点个关注，看我怎么折腾。」'
-    );
-  } else {
-    lines.push(
-      '【0–3s 钩子】',
-      p + '（对镜头）：「别人家' + R.relationLabel + '出去旅游，我俩倒好——」',
-      me + '（入画）：「把客厅折腾成了水疗馆。」',
-      '',
-      '【3–12s 展示】',
-      me + '：「每天下班回来这么泡一泡，整个人都松下来了。」'
-    );
-    if (sceneLine) lines.push(sceneLine);
-    lines.push(
-      p + '：「说不上多神奇，就是居家日子舒服点。」',
-      '',
-      '【12–22s 人设】',
-      me + '：「我和' + p + '合伙做这个，不为别的——」',
-      p + '：「就是自己用着顺手，才敢推荐给你们。」',
-      '',
-      '【22–25s CTA】',
-      me + '：「想要的' + R.audience + '，评论区扣个『1』，我把清单整理好发你。」',
-      p + '：「点个关注，看我俩怎么折腾。」'
-    );
-  }
-  return lines.filter(Boolean).join('\n');
-}
-
-function fmtViralTime(sec) {
-  var m = Math.floor(sec / 60), s = Math.round(sec % 60);
-  return (m < 10 ? '0' + m : '' + m) + ':' + (s < 10 ? '0' + s : '' + s);
-}
-
-function buildViralH3Zh(fd, R, product) {
-  var dur = fd.duration || 15;
-  var genMode = fd.genMode === 'i2v' ? 'i2v' : 't2v';
-  var refImages = Array.isArray(fd.refImages) ? fd.refImages : [];
-  var isI2V = genMode === 'i2v' && refImages.length > 0;
-  var single = (R.relationLabel === '单人' || !R.partnerCall);
-  var scene = (fd.scene && fd.scene.trim && fd.scene.trim()) ? fd.scene.trim() : '';
-
-  var header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
-  if (isI2V) {
-    refImages.forEach(function (r, i) {
-      var num = i + 1;
-      var t = r.type || (i === 0 ? '人物' : i === 1 ? '产品/设备' : '场景');
-      header += '@image#' + num + ' = ' + (r.desc || t) + '\n';
-    });
-  }
-
-  var people = single
-    ? '主角（' + (R.selfSex || '出镜者') + '），服装发型全程一致'
-    : (R.selfCall + '（' + (R.selfSex || '出镜者') + '）＋' + R.partnerCall + '（' + (R.partnerSex || '出镜者') + '），服装发型全程一致');
-  var subjectLabel = single ? '主角' : (R.selfCall + '与' + R.partnerCall + '（' + R.relationLabel + '）');
-
-  var concept = '【影片目标与核心概念】展示' + subjectLabel + '把居家客厅变成水疗放松空间的真实日常，传递松弛舒适的生活质感，不做任何功效宣称。' + (scene ? ('核心场景：' + scene + '。') : '');
-  var lock = '【人物与一致性锁定】' + people + '；' + product + '（白色亚克力缸体、侧边简约触控面板）造型材质全程一致。';
-  var rules = '【摄影与表演规则】手持自然跟拍，允许硬切；微表情前后连续，不夸张表演；' + (single ? '主角' : '两人') + '互动自然松弛。';
-  var visual = '【视觉风格与材质】写实暖光，居家客厅环境，材质细腻真实，色调温馨统一。';
-  var sound = '【声音设计】环境：细密气泡水声＋极低设备白噪音＋居家底噪；人声：' + (single ? '主角' : '两人') + '自然口播（台词见第一部分文案），口型严格同步；无强配乐。';
-  var tail = '【收束】定格' + (single ? '主角' : '两人') + '比「1」手势，' + product + '静置，画面自然收束。';
-
-  var segDefs = [
-    single ? '中景：主角对镜头说话，立于明亮客厅。' : '中景：' + R.partnerCall + '对镜头说话，' + R.selfCall + '从画面外自然入画，两人立于明亮客厅。',
-    single ? '近景：主角坐于' + product + '旁，缸内气泡绵密升腾，神情放松。' : '近景：' + R.selfCall + '坐于' + product + '旁，缸内气泡绵密升腾，神情放松。',
-    '双人中景：' + (single ? '主角' : '两人') + '对视笑，自然互动，氛围松弛。',
-    '产品特写：' + product + '外观与触控操作简洁展示，材质细腻。',
-    (single ? '主角' : '两人') + '比「1」手势指向镜头外（评论区），构图均衡定格。'
-  ];
-  var pts = [];
-  for (var i = 0; i <= 5; i++) pts.push(Math.round(dur * i / 5 * 10) / 10);
-  var timeline = '【0–' + dur + '秒时间线（无缺口）】\n';
-  for (var j = 0; j < 5; j++) {
-    timeline += fmtViralTime(pts[j]) + '–' + fmtViralTime(pts[j + 1]) + ' ' + segDefs[j] + '\n';
-  }
-
-  return [header, concept, lock, timeline, rules, visual, sound, tail].join('\n\n') + '\n';
-}
-
-function generateViralCopy(fd) {
-  var product = ((fd.product || '').trim()) || '巨晴摩雅水疗设备';
-  var relation = (fd.relation || '姐弟').trim();
-  var dur = [5, 10, 15, 30].indexOf(Number(fd.duration)) >= 0 ? Number(fd.duration) : 15;
-  var genMode = fd.genMode === 'i2v' ? 'i2v' : 't2v';
-  var refImages = Array.isArray(fd.refImages) ? fd.refImages : [];
-  var scene = ((fd.scene || '').trim()) || '';
-  var R = resolveRelation(relation);
-
-  var copy = buildViralCopyText(R, scene);
-  var h3_t2v = buildViralH3Zh({ duration: dur, genMode: 't2v', refImages: [], scene: scene }, R, product);
-  var h3_i2v = buildViralH3Zh({ duration: dur, genMode: 'i2v', refImages: refImages, scene: scene }, R, product);
-
-  return { copy: copy, h3_t2v: h3_t2v, h3_i2v: h3_i2v, relation: relation, product: product, scene: scene, genMode: genMode };
-}
-
 function refTypeEn(type) {
   const t = (type || '').trim();
   const map = {
@@ -2618,10 +2775,10 @@ function buildFullReference(scenes, formData, lang) {
   const n = scenes.length;
   const total = scenes.reduce((s, x) => s + x.duration, 0);
 
-  // 图生视频模式：读取参考图
-  const refImages = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages) && formData.referenceImages.length)
-    ? formData.referenceImages : [];
-  const isI2V = refImages.length > 0;
+  // 图生视频模式：读取参考图（仅全局固定图参与整片六段式；按镜头设计的参考图见各 [Shot N] 的「本镜头参考图」）
+  const globalRefs = (formData.genMode === 'i2v' && Array.isArray(formData.referenceImages)) ? formData.referenceImages : [];
+  const globalFixed = globalRefs.filter(function (r) { return r.scope === undefined || r.scope === null || r.scope === 'all'; });
+  const isI2V = formData.genMode === 'i2v';
 
   // 计算各镜头起始时间码
   const starts = [];
@@ -2641,19 +2798,25 @@ function buildFullReference(scenes, formData, lang) {
       (slogan ? (', with the on-screen tagline "' + slogan + '"') : '') +
       ' — whose appearance, wardrobe and on-screen text must remain fully consistent and unchanged across every shot.';
   }
-  if (isI2V && refImages.length >= 1) {
+  if (isI2V && globalFixed.length >= 1) {
     subjects += ' Facial identity, hairstyle, wardrobe and body proportions come from <Reference Image 1>.';
   }
   subjects += '\n';
   if (product) {
     let prodLine = '<Subject 2> is the core product/service: ' + product + '. Its geometry, material, label text, logo placement and structural details remain fully preserved across every angle.';
-    if (isI2V && refImages.length >= 2) {
+    if (isI2V && globalFixed.length >= 2) {
       prodLine += ' Geometric structure, logo and surface material come from <Reference Image 2>.';
     }
     subjects += prodLine + '\n';
   }
-  if (isI2V) {
-    refImages.forEach((r, k) => {
+  if (isI2V && globalFixed.length === 0) {
+    // 无全局固定图：主体图由用户按镜头准备并全程复用，场景图每镜头单独准备
+    const firstPlan = (scenes[0] && scenes[0].refPlan) || [];
+    const subj = firstPlan.find(function (p) { return p.role === 'subject'; });
+    subjects += 'This is an image-to-video film: prepare ONE subject reference image (e.g. ' + (subj ? subj.desc : 'the main subject') + ') and reuse it across all shots to keep the subject consistent; prepare one scene-environment image per shot (see each [Shot N]’s “本镜头参考图 / shot reference images”).\n';
+  }
+  if (isI2V && globalFixed.length > 0) {
+    globalFixed.forEach((r, k) => {
       const num = k + 1;
       const desc = r.desc || (isZh ? '用户提供的参考图' : 'user-provided reference image');
       if (isZh) {
@@ -2675,16 +2838,26 @@ function buildFullReference(scenes, formData, lang) {
   // ---- summary ----
   let summary;
   if (isI2V) {
-    const refDescZh = refImages.map((r, k) => '图' + (k + 1) + (r.type ? '（' + r.type + '）' : '')).join('、');
-    const refDescEn = refImages.map((r, k) => 'Image ' + (k + 1) + (r.type ? ' (' + refTypeEn(r.type) + ')' : '')).join(', ');
+    const refDescZh = globalFixed.map((r, k) => '图' + (k + 1) + (r.type ? '（' + r.type + '）' : '')).join('、');
+    const refDescEn = globalFixed.map((r, k) => 'Image ' + (k + 1) + (r.type ? ' (' + refTypeEn(r.type) + ')' : '')).join(', ');
     if (isZh) {
       const brandSegZh = hasBrand ? ('品牌 ' + brand + '，') : '';
-      summary = '[图生视频生成] 目标视频基于用户提供的 ' + refImages.length + ' 张参考图（' + refDescZh + '）生成，是一部 ' + vt.name + '（' + brandSegZh + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。以参考图为准保持主体外观一致，生成后于后期拼接成片。\n';
+      if (globalFixed.length > 0) {
+        summary = '[图生视频生成] 目标视频基于用户提供的 ' + globalFixed.length + ' 张固定参考图（' + refDescZh + '）生成，是一部 ' + vt.name + '（' + brandSegZh + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。以参考图为准保持主体外观一致，生成后于后期拼接成片。\n';
+      } else {
+        summary = '[图生视频生成] 目标视频按每个镜头自动设计的参考图生成（每镜头独立上传主体图+场景图，详见各 [Shot N] 的「本镜头参考图」），是一部 ' + vt.name + '（' + brandSegZh + st.name + ' 风格，' + ratio + ' 画幅，总 ' + total + ' 秒，由 ' + n + ' 个连续镜头 ' + shotRange + ' 组成）。主体图建议全程复用同一张以保证一致，生成后于后期拼接成片。\n';
+      }
     } else {
       const brandSegEn = hasBrand ? (' for ' + brand) : '';
-      summary = '[image-to-video generation] The target video is generated from ' + refImages.length + ' user-provided reference images (' + refDescEn + '), as a ' + vt.nameEn + brandSegEn + ' in ' + st.nameEn +
-        ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
-        '). Visual identity must match the reference images; generated as one connected storyboard and edited together in post-production.\n';
+      if (globalFixed.length > 0) {
+        summary = '[image-to-video generation] The target video is generated from ' + globalFixed.length + ' user-provided reference images (' + refDescEn + '), as a ' + vt.nameEn + brandSegEn + ' in ' + st.nameEn +
+          ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
+          '). Visual identity must match the reference images; generated as one connected storyboard and edited together in post-production.\n';
+      } else {
+        summary = '[image-to-video generation] The target video is generated from per-shot reference images (one subject image reused across all shots plus one scene image per shot — see each [Shot N]’s “shot reference images”), as a ' + vt.nameEn + brandSegEn + ' in ' + st.nameEn +
+          ' style, ' + ratio + ' aspect ratio, total ' + total + ' seconds, composed of ' + n + ' continuous shots (' + shotRange +
+          '). Keep the subject identical by reusing the same subject image; edited together in post-production.\n';
+      }
     }
   } else {
     const brandSegRef = hasBrand ? (' for ' + brand) : '';
@@ -2699,14 +2872,24 @@ function buildFullReference(scenes, formData, lang) {
     retention += '<Subject 2> (appears in ' + shotRange + '): fully_preserved - product geometry, label and logo consistent.\n';
   }
   if (isI2V) {
-    refImages.forEach((r, k) => {
-      const num = k + 1;
+    if (globalFixed.length > 0) {
+      globalFixed.forEach((r, k) => {
+        const num = k + 1;
+        if (isZh) {
+          retention += '<参考图' + num + '> (appears in ' + shotRange + '): fully_preserved - 画面中的' + (r.type || '对应元素') + '外观、姿态与细节严格参照参考图' + num + '，保持完全一致。\n';
+        } else {
+          retention += '<Reference Image ' + num + '> (appears in ' + shotRange + '): fully_preserved - the ' + refTypeEn(r.type) + ' appearance, pose and details strictly match reference image ' + num + ' and stay fully consistent.\n';
+        }
+      });
+    } else {
       if (isZh) {
-        retention += '<参考图' + num + '> (appears in ' + shotRange + '): fully_preserved - 画面中的' + (r.type || '对应元素') + '外观、姿态与细节严格参照参考图' + num + '，保持完全一致。\n';
+        retention += '<主体参考图> (appears in ' + shotRange + '): fully_preserved - 主体图全程复用同一张，外观、姿态与细节保持完全一致。\n';
+        retention += '<场景参考图> (per shot): fully_preserved - 各镜头按「本镜头参考图」上传的场景图，画面环境与布局严格参照对应镜头。\n';
       } else {
-        retention += '<Reference Image ' + num + '> (appears in ' + shotRange + '): fully_preserved - the ' + refTypeEn(r.type) + ' appearance, pose and details strictly match reference image ' + num + ' and stay fully consistent.\n';
+        retention += '<Subject reference image> (appears in ' + shotRange + '): fully_preserved - the same subject image is reused across all shots; appearance, pose and details stay fully consistent.\n';
+        retention += '<Scene reference image> (per shot): fully_preserved - each shot uses its own scene image from that shot’s “shot reference images”; environment and layout strictly match the corresponding shot.\n';
       }
-    });
+    }
   }
 
   // ---- detailed_description ----
@@ -2714,12 +2897,20 @@ function buildFullReference(scenes, formData, lang) {
     ', ' + (scenes[0].lighting || 'motivated lighting') + ', and physically plausible camera movement.';
   let dd = styleLine + '\n';
   if (isI2V) {
-    const refsZh = refImages.map((r, k) => '[参考图' + (k + 1) + ']（' + (r.type || '参考') + '）').join('、');
-    const refsEn = refImages.map((r, k) => '[Reference Image ' + (k + 1) + '] (' + refTypeEn(r.type) + ')').join(', ');
-    if (isZh) {
-      dd += '全片严格参照以下参考图保持主体一致：' + refsZh + '。\n';
+    if (globalFixed.length > 0) {
+      const refsZh = globalFixed.map((r, k) => '[参考图' + (k + 1) + ']（' + (r.type || '参考') + '）').join('、');
+      const refsEn = globalFixed.map((r, k) => '[Reference Image ' + (k + 1) + '] (' + refTypeEn(r.type) + ')').join(', ');
+      if (isZh) {
+        dd += '全片严格参照以下固定参考图保持主体一致：' + refsZh + '。\n';
+      } else {
+        dd += 'Throughout the video, strictly use the following reference images to keep subjects consistent: ' + refsEn + '.\n';
+      }
     } else {
-      dd += 'Throughout the video, strictly use the following reference images to keep subjects consistent: ' + refsEn + '.\n';
+      if (isZh) {
+        dd += '图生视频·按镜头设计参考图：每镜头独立上传主体图（全程复用同一张）+ 场景图（详见各 [Shot N] 的「本镜头参考图」），严格参照以保证主体与场景一致。\n';
+      } else {
+        dd += 'Image-to-video, per-shot reference images: each shot uses its own subject image (reused across all shots) plus a scene image (see each [Shot N]’s “shot reference images”); strictly reference them to keep subject and scene consistent.\n';
+      }
     }
   }
   // 风格叙事DNA + 行业叙事DNA（整片只写一次，统一作用于全片，避免每个镜头重复）
@@ -2729,7 +2920,7 @@ function buildFullReference(scenes, formData, lang) {
     if (globalEn) dd += globalEn + '\n';
   }
   scenes.forEach((s, i) => {
-    const refNote = buildRefNoteForShot(refImages, i, isZh);
+    const refNote = buildRefNoteForShot(globalFixed, i, isZh);
     dd += buildShotBlock(s, i, starts[i], lang, refNote) + '\n';
   });
 
@@ -2742,8 +2933,8 @@ function buildFullReference(scenes, formData, lang) {
   scenes.forEach((s) => { music += (isZh ? s.musicZh : s.musicEn) + ' '; });
   music = music.trim() || 'N/A';
 
-  // I2VA：绝对开头用 @Image1 as 角色@Image2 as 产品@Image3 as 场景 绑定上传的参考图（H3 网页端图生视频靠此前缀定位每张图）
-  const i2vPrefix = isI2V ? (buildImageRefLine(refImages, false) + '\n') : '';
+  // I2VA：绝对开头用 @Image1 as 角色@Image2 as 产品@Image3 as 场景 绑定上传的参考图（仅全局固定图参与整片前缀；按镜头设计的图见各镜头「本镜头参考图」）
+  const i2vPrefix = (isI2V && globalFixed.length) ? (buildImageRefLine(globalFixed, false) + '\n') : '';
   return i2vPrefix + 'subject_definitions:\n' + subjects +
     '\nsummary:\n' + summary +
     '\nretention_analysis:\n' + retention +
@@ -2896,3 +3087,140 @@ function exportToWord(scenes, formData) {
   html += `</body></html>`;
   return html;
 }
+
+// ========== 爆款文案工坊：生成「抖音口播文案 + 海螺 H3 视频提示词」两部分 ==========
+function resolveRelation(relation) {
+  var r = (relation || '姐弟').trim();
+  var map = {
+    '姐弟': { selfCall: '弟弟', partnerCall: '姐姐', relationLabel: '姐弟', audience: '兄弟姐妹们', selfSex: '男', partnerSex: '女' },
+    '姐妹': { selfCall: '我', partnerCall: '我姐', relationLabel: '姐妹', audience: '姐妹们', selfSex: '女', partnerSex: '女' },
+    '兄弟': { selfCall: '我', partnerCall: '我哥', relationLabel: '兄弟', audience: '兄弟们', selfSex: '男', partnerSex: '男' },
+    '夫妻': { selfCall: '我', partnerCall: '我老婆', relationLabel: '夫妻', audience: '大家', selfSex: '男', partnerSex: '女' },
+    '单人': { selfCall: '我', partnerCall: '', relationLabel: '单人', audience: '大家', selfSex: '', partnerSex: '' }
+  };
+  if (map[r]) return map[r];
+  return { selfCall: '我', partnerCall: relation, relationLabel: relation, audience: '大家', selfSex: '', partnerSex: '' };
+}
+
+function buildViralCopyText(R, scene) {
+  var single = (R.relationLabel === '单人' || !R.partnerCall);
+  var me = single ? '我' : R.selfCall;
+  var p = R.partnerCall;
+  var sceneLine = (scene && scene.trim())
+    ? (p ? p + '：「' + scene.trim() + '，这才是最实在的。」'
+         : '我：「' + scene.trim() + '，这才是最实在的。」')
+    : '';
+  var lines = [];
+  if (single) {
+    lines.push(
+      '【0–3s 钩子】',
+      '我（对镜头）：「别人还在纠结买什么，我倒好——」',
+      '我：「把客厅折腾成了水疗馆。」',
+      '',
+      '【3–12s 展示】',
+      '我：「每天下班回来这么泡一泡，整个人都松下来了。」'
+    );
+    if (sceneLine) lines.push(sceneLine);
+    lines.push(
+      '我：「说不上多神奇，就是居家日子舒服点。」',
+      '',
+      '【12–22s 人设】',
+      '我：「我做这个，不为别的——」',
+      '我：「就是自己用着顺手，才敢推荐给你们。」',
+      '',
+      '【22–25s CTA】',
+      '我：「想要的朋友们，评论区扣个『1』，我把清单整理好发你。」',
+      '我：「点个关注，看我怎么折腾。」'
+    );
+  } else {
+    lines.push(
+      '【0–3s 钩子】',
+      p + '（对镜头）：「别人家' + R.relationLabel + '出去旅游，我俩倒好——」',
+      me + '（入画）：「把客厅折腾成了水疗馆。」',
+      '',
+      '【3–12s 展示】',
+      me + '：「每天下班回来这么泡一泡，整个人都松下来了。」'
+    );
+    if (sceneLine) lines.push(sceneLine);
+    lines.push(
+      p + '：「说不上多神奇，就是居家日子舒服点。」',
+      '',
+      '【12–22s 人设】',
+      me + '：「我和' + p + '合伙做这个，不为别的——」',
+      p + '：「就是自己用着顺手，才敢推荐给你们。」',
+      '',
+      '【22–25s CTA】',
+      me + '：「想要的' + R.audience + '，评论区扣个『1』，我把清单整理好发你。」',
+      p + '：「点个关注，看我俩怎么折腾。」'
+    );
+  }
+  return lines.filter(Boolean).join('\n');
+}
+
+function fmtViralTime(sec) {
+  var m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return (m < 10 ? '0' + m : '' + m) + ':' + (s < 10 ? '0' + s : '' + s);
+}
+
+function buildViralH3Zh(fd, R, product) {
+  var dur = fd.duration || 15;
+  var genMode = fd.genMode === 'i2v' ? 'i2v' : 't2v';
+  var refImages = Array.isArray(fd.refImages) ? fd.refImages : [];
+  var isI2V = genMode === 'i2v' && refImages.length > 0;
+  var single = (R.relationLabel === '单人' || !R.partnerCall);
+  var scene = (fd.scene && fd.scene.trim && fd.scene.trim()) ? fd.scene.trim() : '';
+
+  var header = '生成一段 ' + dur + ' 秒、16:9、2K、原生立体声、MiniMax H3 的视频。\n';
+  if (isI2V) {
+    refImages.forEach(function (r, i) {
+      var num = i + 1;
+      var t = r.type || (i === 0 ? '人物' : i === 1 ? '产品/设备' : '场景');
+      header += '@image#' + num + ' = ' + (r.desc || t) + '\n';
+    });
+  }
+
+  var people = single
+    ? '主角（' + (R.selfSex || '出镜者') + '），服装发型全程一致'
+    : (R.selfCall + '（' + (R.selfSex || '出镜者') + '）＋' + R.partnerCall + '（' + (R.partnerSex || '出镜者') + '），服装发型全程一致');
+  var subjectLabel = single ? '主角' : (R.selfCall + '与' + R.partnerCall + '（' + R.relationLabel + '）');
+
+  var concept = '【影片目标与核心概念】展示' + subjectLabel + '把居家客厅变成水疗放松空间的真实日常，传递松弛舒适的生活质感，不做任何功效宣称。' + (scene ? ('核心场景：' + scene + '。') : '');
+  var lock = '【人物与一致性锁定】' + people + '；' + product + '（白色亚克力缸体、侧边简约触控面板）造型材质全程一致。';
+  var rules = '【摄影与表演规则】手持自然跟拍，允许硬切；微表情前后连续，不夸张表演；' + (single ? '主角' : '两人') + '互动自然松弛。';
+  var visual = '【视觉风格与材质】写实暖光，居家客厅环境，材质细腻真实，色调温馨统一。';
+  var sound = '【声音设计】环境：细密气泡水声＋极低设备白噪音＋居家底噪；人声：' + (single ? '主角' : '两人') + '自然口播（台词见第一部分文案），口型严格同步；无强配乐。';
+  var tail = '【收束】定格' + (single ? '主角' : '两人') + '比「1」手势，' + product + '静置，画面自然收束。';
+
+  var segDefs = [
+    single ? '中景：主角对镜头说话，立于明亮客厅。' : '中景：' + R.partnerCall + '对镜头说话，' + R.selfCall + '从画面外自然入画，两人立于明亮客厅。',
+    single ? '近景：主角坐于' + product + '旁，缸内气泡绵密升腾，神情放松。' : '近景：' + R.selfCall + '坐于' + product + '旁，缸内气泡绵密升腾，神情放松。',
+    '双人中景：' + (single ? '主角' : '两人') + '对视笑，自然互动，氛围松弛。',
+    '产品特写：' + product + '外观与触控操作简洁展示，材质细腻。',
+    (single ? '主角' : '两人') + '比「1」手势指向镜头外（评论区），构图均衡定格。'
+  ];
+  var pts = [];
+  for (var i = 0; i <= 5; i++) pts.push(Math.round(dur * i / 5 * 10) / 10);
+  var timeline = '【0–' + dur + '秒时间线（无缺口）】\n';
+  for (var j = 0; j < 5; j++) {
+    timeline += fmtViralTime(pts[j]) + '–' + fmtViralTime(pts[j + 1]) + ' ' + segDefs[j] + '\n';
+  }
+
+  return [header, concept, lock, timeline, rules, visual, sound, tail].join('\n\n') + '\n';
+}
+
+function generateViralCopy(fd) {
+  var product = ((fd.product || '').trim()) || '巨晴摩雅水疗设备';
+  var relation = (fd.relation || '姐弟').trim();
+  var dur = [5, 10, 15, 30].indexOf(Number(fd.duration)) >= 0 ? Number(fd.duration) : 15;
+  var genMode = fd.genMode === 'i2v' ? 'i2v' : 't2v';
+  var refImages = Array.isArray(fd.refImages) ? fd.refImages : [];
+  var scene = ((fd.scene || '').trim()) || '';
+  var R = resolveRelation(relation);
+
+  var copy = buildViralCopyText(R, scene);
+  var h3_t2v = buildViralH3Zh({ duration: dur, genMode: 't2v', refImages: [], scene: scene }, R, product);
+  var h3_i2v = buildViralH3Zh({ duration: dur, genMode: 'i2v', refImages: refImages, scene: scene }, R, product);
+
+  return { copy: copy, h3_t2v: h3_t2v, h3_i2v: h3_i2v, relation: relation, product: product, scene: scene, genMode: genMode };
+}
+
